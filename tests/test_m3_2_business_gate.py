@@ -11,7 +11,7 @@ from resolver import GateWiringError, _run_business_early_gate, analyze
 from skills.audit import AuditError, audit_analyst_artifact
 from skills.bundle_validation import BundleValidationError, validate_skill_bundle
 from skills.data.edgar.edgar import fetch_edgar_facts
-from skills.m3_artifacts import AnalystDraft, EvidenceRef
+from skills.analyst_artifacts import AnalystDraft, EvidenceRef
 from skills.research.business.business import build_business_artifact
 from skills.storage import LocalStorage
 from tests.m3_fakes import FakeLLM, FakeSenior

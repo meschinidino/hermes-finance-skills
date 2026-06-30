@@ -13,7 +13,7 @@ from skills.data.edgar.edgar import fetch_edgar_facts
 from skills.data.price.price import fetch_price
 from skills.interfaces import LLM, PriceFeed, Senior, Storage
 from skills.m1_artifacts import EdgarFacts, model_to_payload
-from skills.m3_artifacts import collect_ratifiables, m3_model_to_payload
+from skills.analyst_artifacts import collect_ratifiables, m3_model_to_payload
 from skills.research.business.business import BusinessArtifact, EarlyGateResult, StopArtifact, build_business_artifact
 from skills.research.capalloc.capalloc import build_capalloc_artifact
 from skills.research.moat.moat import build_moat_artifact

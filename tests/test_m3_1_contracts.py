@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 from skills._primitives import Header, Number, Provenance
 from skills.audit import AuditError, audit_analyst_artifact, audit_senior_decision_package, audit_senior_review_package
 from skills.bundle_validation import BundleValidationError, validate_skill_bundle
-from skills.m3_artifacts import (
+from skills.analyst_artifacts import (
     AnalystDraft,
     EvidenceRef,
     M3Model,
