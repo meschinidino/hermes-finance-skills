@@ -14,6 +14,7 @@ Pack structure as an installable module; `Config` (house conventions §2) loaded
 Minimal happy path on one ticker: `A-1 EDGAR` → `B-1 Normalize` → `B-2 WACC/ROIC` → a bare `D-1 Handoff`. One audit gate live. Provenance enforced on the path.
 **Done:** real ROIC/WACC for a real company, every number sourced, emitted in a schema-valid (if sparse) handoff. **This is the milestone that de-risks everything.**
 **Spec:** `specs/2026-06-29-walking-skeleton/`
+**Status:** M1 complete (fixture-backed EDGAR → Normalize → Spine → bare Handoff). Validated with `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest` and `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync python -m resolver AAPL`.
 
 ### M2 — Complete the Accountants
 Full Data + Valuation depts: `A-2 Price`, `A-3 CoC`, `B-3 DCF` (forward **and** reverse), `B-4 Screens` (variant-aware), `B-5 Base-Rate`, `B-6 Method Router`. Golden-fixture tests for each (pure TDD).

@@ -71,3 +71,19 @@ M1 can be marked complete in `specs/roadmap.md` only after:
 - fault-injection tests fail closed,
 - `analyze("AAPL")` writes reloadable `spine.json` and `handoff.json`,
 - any unavailable live checks are documented with the exact reason.
+
+## Validation Result
+
+Status: implemented and validated.
+
+Validated with:
+
+```text
+UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest                  # 22 passed, 3 skipped
+UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest skills/valuation/spine  # 8 passed
+UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync python -m resolver AAPL
+```
+
+The frozen-fixture suite now covers required-concept failure, insufficient history, price-feed failure, missing provenance, missing derivation, non-positive invested capital, out-of-bounds WACC, out-of-bounds ROIC, and storage round-trip mismatch.
+
+Live EDGAR, FRED, and price-feed smokes were not run because M1 CI is intentionally fixture-backed and no network credentials are required for this milestone.

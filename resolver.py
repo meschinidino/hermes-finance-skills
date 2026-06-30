@@ -2,13 +2,21 @@ from __future__ import annotations
 
 import argparse
 import json
-from datetime import date, datetime, timezone
+from datetime import date
 from pathlib import Path
 from typing import Any
 
-from skills.config import Config, load_config
+from skills.audit import audit_m1_handoff
+from skills.config import load_config
+from skills.data.cost_of_capital.cost_of_capital import build_cost_of_capital_inputs
+from skills.data.edgar.edgar import fetch_edgar_facts
+from skills.data.price.price import fetch_price
 from skills.interfaces import LLM, PriceFeed, Senior, Storage
+from skills.m1_artifacts import EdgarFacts, model_to_payload
 from skills.storage import LocalStorage
+from skills.synthesis.handoff.handoff import build_handoff
+from skills.valuation.normalize.normalize import normalize_financials
+from skills.valuation.spine.spine import build_spine
 
 
 def analyze(
@@ -21,12 +29,8 @@ def analyze(
     llm: LLM | None = None,
     price_feed: PriceFeed | None = None,
 ) -> dict[str, Any]:
-    """M0 entry point.
-
-    The injected role arguments are accepted now so Hermes or tests can wire the
-    same call shape before the M1 skills exist.
-    """
-    del senior, llm, price_feed
+    """Run the M1 walking skeleton route for a US-listed ticker."""
+    del senior, llm
 
     normalized_ticker = ticker.upper().strip()
     if not normalized_ticker:
@@ -36,33 +40,49 @@ def analyze(
     config = load_config(config_path)
     active_storage = storage or LocalStorage()
 
-    payload = _stub_payload(normalized_ticker, run_date, config)
-    artifact_path = f"runs/{normalized_ticker}/{run_date.isoformat()}/m0_stub.json"
-    active_storage.put_json(artifact_path, payload)
-    reloaded = active_storage.get_json(artifact_path)
-    if reloaded["ticker"] != normalized_ticker:
-        raise RuntimeError("storage round-trip failed")
+    edgar = fetch_edgar_facts(normalized_ticker)
+    price = fetch_price(normalized_ticker, price_feed=price_feed, as_of=run_date)
+    cost_of_capital = build_cost_of_capital_inputs(normalized_ticker, config, as_of=run_date)
+    normalized = normalize_financials(edgar)
+    spine = build_spine(
+        normalized,
+        cost_of_capital,
+        price,
+        excess_cash_pct=config.invested_capital.excess_cash_pct,
+        schema_version=config.schema_version,
+    )
+    handoff = build_handoff(
+        normalized_ticker,
+        edgar.cik,
+        spine,
+        price=price.price,
+        as_of=run_date,
+        schema_version=config.schema_version,
+        flags=edgar.flags + price.flags + cost_of_capital.flags,
+        source_accessions=_source_accessions(edgar),
+    )
+
+    run_dir = f"runs/{normalized_ticker}/{run_date.isoformat()}"
+    spine_payload = model_to_payload(spine)
+    active_storage.put_json(f"{run_dir}/spine.json", spine_payload)
+    if active_storage.get_json(f"{run_dir}/spine.json") != spine_payload:
+        raise RuntimeError("spine storage round-trip failed")
+
+    handoff_path = f"{run_dir}/handoff.json"
+    audit_m1_handoff(handoff, storage=active_storage, path=handoff_path)
+    payload = active_storage.get_json(handoff_path)
 
     return payload
 
 
-def _stub_payload(ticker: str, as_of: date, config: Config) -> dict[str, Any]:
-    return {
-        "schema_version": config.schema_version,
-        "status": "m0_stub",
-        "ticker": ticker,
-        "as_of": as_of.isoformat(),
-        "produced_at": datetime.now(timezone.utc).isoformat(),
-        "message": "M0 scaffold only; no financial analysis has been computed.",
-        "loaded_conventions": {
-            "tax_rate": config.tax.marginal_rate,
-            "erp": config.cost_of_capital.erp,
-            "risk_free_fallback": config.cost_of_capital.risk_free_fallback,
-            "credit_spread": config.cost_of_capital.credit_spread,
-            "excess_cash_pct": config.invested_capital.excess_cash_pct,
-            "has_beta": ticker in config.betas,
-        },
-    }
+def _source_accessions(edgar: EdgarFacts) -> list[str]:
+    accessions: set[str] = set()
+    for values in edgar.facts:
+        for number in values[1]:
+            accession = number.provenance.accession
+            if accession and accession != "explicit-zero":
+                accessions.add(accession)
+    return sorted(accessions)
 
 
 def main() -> None:

@@ -66,14 +66,15 @@ class M0ScaffoldTest(unittest.TestCase):
             self.assertEqual(storage.get_json("runs/AAPL/2026-06-29/test.json")["ticker"], "AAPL")
             self.assertTrue((Path(tmp) / "pack.db").exists())
 
-    def test_analyze_writes_m0_stub(self) -> None:
+    def test_analyze_writes_m1_handoff(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             storage = LocalStorage(tmp)
             result = analyze("aapl", as_of=date(2026, 6, 29), storage=storage)
 
-            self.assertEqual(result["status"], "m0_stub")
+            self.assertEqual(result["status"], "m1_walking_skeleton")
             self.assertEqual(result["ticker"], "AAPL")
-            self.assertTrue((Path(tmp) / "runs/AAPL/2026-06-29/m0_stub.json").exists())
+            self.assertTrue((Path(tmp) / "runs/AAPL/2026-06-29/spine.json").exists())
+            self.assertTrue((Path(tmp) / "runs/AAPL/2026-06-29/handoff.json").exists())
 
 
 if __name__ == "__main__":
