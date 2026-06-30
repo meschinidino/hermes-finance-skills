@@ -6,7 +6,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from skills.audit import audit_m1_handoff
+from skills.audit import audit_artifact, audit_m1_handoff
 from skills.config import load_config
 from skills.data.cost_of_capital.cost_of_capital import build_cost_of_capital_inputs
 from skills.data.edgar.edgar import fetch_edgar_facts
@@ -16,6 +16,7 @@ from skills.m1_artifacts import EdgarFacts, model_to_payload
 from skills.storage import LocalStorage
 from skills.synthesis.handoff.handoff import build_handoff
 from skills.valuation.normalize.normalize import normalize_financials
+from skills.valuation.dcf.dcf import build_dcf_artifacts
 from skills.valuation.spine.spine import build_spine
 
 
@@ -41,8 +42,14 @@ def analyze(
     active_storage = storage or LocalStorage()
 
     edgar = fetch_edgar_facts(normalized_ticker)
-    price = fetch_price(normalized_ticker, price_feed=price_feed, as_of=run_date)
-    cost_of_capital = build_cost_of_capital_inputs(normalized_ticker, config, as_of=run_date)
+    price = fetch_price(normalized_ticker, edgar=edgar, price_feed=price_feed, as_of=run_date)
+    cost_of_capital = build_cost_of_capital_inputs(
+        normalized_ticker,
+        config,
+        edgar=edgar,
+        price=price,
+        as_of=run_date,
+    )
     normalized = normalize_financials(edgar)
     spine = build_spine(
         normalized,
@@ -70,7 +77,14 @@ def analyze(
 
     handoff_path = f"{run_dir}/handoff.json"
     audit_m1_handoff(handoff, storage=active_storage, path=handoff_path)
+
+    valuation_range, expectations_line = build_dcf_artifacts(normalized, edgar, price, cost_of_capital, config)
+    audit_artifact(valuation_range, storage=active_storage, path=f"{run_dir}/valuation_range.json")
+    audit_artifact(expectations_line, storage=active_storage, path=f"{run_dir}/expectations_line.json")
+
     payload = active_storage.get_json(handoff_path)
+    payload["valuation_range"] = active_storage.get_json(f"{run_dir}/valuation_range.json")
+    payload["expectations_line"] = active_storage.get_json(f"{run_dir}/expectations_line.json")
 
     return payload
 

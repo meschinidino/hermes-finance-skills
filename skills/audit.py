@@ -6,7 +6,7 @@ from typing import Any
 from pydantic import BaseModel
 
 from skills._primitives import Number
-from skills.m1_artifacts import Spine, iter_numbers, model_to_payload
+from skills.m1_artifacts import ExpectationsLine, Spine, ValuationRange, iter_numbers, model_to_payload
 from skills.interfaces import Storage
 
 
@@ -33,13 +33,32 @@ def audit_m1_handoff(handoff: BaseModel, *, storage: Storage | None = None, path
             raise AuditError("storage round-trip failed")
 
 
-def _audit_number(number: Number) -> None:
+def audit_artifact(artifact: BaseModel, *, storage: Storage | None = None, path: str | None = None) -> None:
+    numbers = iter_numbers(artifact)
+    if not numbers:
+        raise AuditError("artifact has no numbers")
+    for number in numbers:
+        _audit_number(number, require_input_refs=True)
+    if isinstance(artifact, ValuationRange):
+        _audit_valuation_range(artifact)
+    if isinstance(artifact, ExpectationsLine):
+        _audit_expectations_line(artifact)
+    if storage and path:
+        payload = model_to_payload(artifact)
+        storage.put_json(path, payload)
+        if storage.get_json(path) != payload:
+            raise AuditError("storage round-trip failed")
+
+
+def _audit_number(number: Number, *, require_input_refs: bool = False) -> None:
     if number.provenance is None:
         raise AuditError("number missing provenance")
     if number.kind == "fact" and number.provenance.form not in {"10-K", "10-Q", "DEF 14A", "Form 4"}:
         raise AuditError("fact must trace to accepted filing form")
     if number.kind != "fact" and not number.derivation:
         raise AuditError("estimate missing derivation")
+    if require_input_refs and number.provenance.form == "computed" and "inputs:" not in (number.derivation or ""):
+        raise AuditError("computed estimate derivation missing input references")
     if not math.isfinite(number.value):
         raise AuditError("number must be finite")
 
@@ -80,3 +99,27 @@ def _audit_spine(spine: Spine) -> None:
             raise AuditError(f"{year} ROIC out of bounds")
         if abs((margin.value * turnover.value) - roic.value) > 0.000001:
             raise AuditError(f"{year} margin-turnover reconciliation failed")
+
+
+def _audit_valuation_range(valuation: ValuationRange) -> None:
+    if len(valuation.scenarios) != 3:
+        raise AuditError("valuation range requires exactly three scenarios")
+    if [scenario.name for scenario in valuation.scenarios] != ["bear", "base", "bull"]:
+        raise AuditError("valuation range requires bear/base/bull scenarios")
+    for scenario in valuation.scenarios:
+        if scenario.probability.decision is not None:
+            raise AuditError("M2a probabilities must remain unratified")
+
+
+def _audit_expectations_line(expectations: ExpectationsLine) -> None:
+    low = expectations.wacc_band["low"].value
+    high = expectations.wacc_band["high"].value
+    if low >= high:
+        raise AuditError("WACC band low must be below high")
+    if not 0 < low < 0.30 or not 0 < high < 0.30:
+        raise AuditError("WACC band out of bounds")
+    for edge, result in expectations.reverse_band_results.items():
+        if edge not in {"low", "high"}:
+            raise AuditError("unexpected reverse DCF edge")
+        if not result.converged and result.implied_revenue_growth is not None:
+            raise AuditError("non-converged reverse DCF must not force an implied point")

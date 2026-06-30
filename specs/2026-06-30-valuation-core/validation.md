@@ -14,7 +14,7 @@
 4. Confirm `valuation_range.json` is reloadable and is marked as a standalone M2a artifact, not a signed Handoff.
 5. Confirm `expectations_line.json` is reloadable.
 6. Pick one forward value and walk its derivation back to revenue, margin, reinvestment, WACC, terminal value, net debt, and shares.
-7. Pick one reverse implied value and confirm it was solved independently at both WACC-band bounds.
+7. Confirm the reverse-DCF low/high WACC-band edge results are the authoritative output. Any midpoint is a convenience field only and is not the headline implied value.
 
 ## Technical Checks
 
@@ -71,6 +71,10 @@ UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest skills/data/cost_of_cap
 
 The live price smoke should verify the injected `PriceFeed` contract still matches the configured provider. The live cost-of-capital smoke should verify FRED `DGS10` is reachable and parsed correctly. Damodaran inputs may be refreshed by a documented manual or scripted process, but CI must consume the frozen/configured values.
 
+Latest live-smoke result on 2026-06-30:
+- FRED `DGS10` smoke passed.
+- Live price provider smoke was documented unavailable: Yahoo Finance chart returned `HTTPError: HTTP Error 429: Too Many Requests`. The test now skips with that exact provider error instead of silently falling into the book-equity fallback path.
+
 ## Document Validation
 
 Before starting implementation:
@@ -101,4 +105,24 @@ M2a can be marked complete in `specs/roadmap.md` only after:
 
 ## Validation Result
 
-Status: spec only. Implementation not started.
+Status: M2a complete after pre-landing review fixes.
+
+Validated on 2026-06-30 with:
+
+```text
+UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest
+UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest skills/data/price
+UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest skills/data/cost_of_capital
+UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest skills/valuation/dcf
+UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync python -m resolver AAPL
+RUN_LIVE_M2A=1 UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest skills/data/price/test_integration.py skills/data/cost_of_capital/test_integration.py -q -rs
+```
+
+Results:
+- Offline full suite: `34 passed, 3 skipped`.
+- Price bundle offline: `3 passed, 1 skipped`.
+- Cost-of-capital bundle offline: `3 passed, 1 skipped`.
+- DCF bundle offline: `8 passed`.
+- Resolver smoke: passed; files forward `valuation_range.json` and reverse `expectations_line.json`.
+- Price-feed-down smoke: passed; files forward valuation using book-equity WACC weighting and files a blocked reverse-DCF Expectations Line.
+- Live smoke: FRED passed; live price skipped with documented provider unavailability (`HTTP 429 Too Many Requests`).

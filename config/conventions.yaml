@@ -3,10 +3,34 @@ cost_of_capital:
   erp: 0.0423
   risk_free_fallback: 0.0418
   credit_spread: 0.010
+  synthetic_rating: "AA"
+  wacc_band_bps: 0.005
 tax:
   marginal_rate: 0.25
 invested_capital:
   excess_cash_pct: 0.02
 betas:
-  AAPL:
-    unlevered: 1.05
+  Computers/Peripherals:
+    unlevered: 1.31
+    source_name: "Damodaran:Betas by Sector (US)"
+    source_url: "https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/Betas.html"
+    source_date: "2026-01"
+    tickers: ["AAPL"]
+dcf:
+  forecast_years: 5
+  terminal_growth: 0.025
+  reverse_growth_low: -0.05
+  reverse_growth_high: 0.32
+  scenarios:
+    bear:
+      revenue_growth: 0.02
+      nopat_margin: 0.24
+      sales_to_capital: 2.25
+    base:
+      revenue_growth: 0.04
+      nopat_margin: 0.28
+      sales_to_capital: 2.75
+    bull:
+      revenue_growth: 0.06
+      nopat_margin: 0.31
+      sales_to_capital: 3.25

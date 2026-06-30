@@ -1,0 +1,9 @@
+{
+  "source": "FRED:DGS10",
+  "observations": [
+    {
+      "date": "2026-06-29",
+      "value": "4.18"
+    }
+  ]
+}

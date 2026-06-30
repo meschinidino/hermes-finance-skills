@@ -19,7 +19,7 @@ class M0ScaffoldTest(unittest.TestCase):
 
         self.assertEqual(config.schema_version, "1.0")
         self.assertEqual(config.tax.marginal_rate, 0.25)
-        self.assertIn("AAPL", config.betas)
+        self.assertEqual(config.beta_for_ticker("AAPL").unlevered, 1.31)
 
     def test_config_rejects_missing_required_keys(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -75,6 +75,29 @@ class M0ScaffoldTest(unittest.TestCase):
             self.assertEqual(result["ticker"], "AAPL")
             self.assertTrue((Path(tmp) / "runs/AAPL/2026-06-29/spine.json").exists())
             self.assertTrue((Path(tmp) / "runs/AAPL/2026-06-29/handoff.json").exists())
+            self.assertTrue((Path(tmp) / "runs/AAPL/2026-06-29/valuation_range.json").exists())
+            self.assertTrue((Path(tmp) / "runs/AAPL/2026-06-29/expectations_line.json").exists())
+            self.assertIsNotNone(result["valuation_range"])
+            self.assertIsNotNone(result["expectations_line"])
+
+    def test_analyze_price_feed_down_still_files_m2a_artifacts(self) -> None:
+        class BadFeed:
+            def quote(self, ticker: str) -> dict[str, object]:
+                raise RuntimeError("offline")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            storage = LocalStorage(tmp)
+            result = analyze("aapl", as_of=date(2026, 6, 29), storage=storage, price_feed=BadFeed())
+            run_dir = Path(tmp) / "runs/AAPL/2026-06-29"
+
+            self.assertIn("book_equity_weighting_fallback", result["flags"])
+            self.assertTrue((run_dir / "valuation_range.json").exists())
+            self.assertTrue((run_dir / "expectations_line.json").exists())
+            self.assertIsNotNone(result["valuation_range"])
+            self.assertIsNotNone(result["expectations_line"])
+            self.assertIn("book_equity_weighting_fallback", result["valuation_range"]["flags"])
+            self.assertIn("reverse_dcf_blocked_no_observed_price", result["expectations_line"]["flags"])
+            self.assertTrue(result["expectations_line"]["reverse_band_results"]["low"]["blocked"])
 
 
 if __name__ == "__main__":

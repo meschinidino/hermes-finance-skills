@@ -15,8 +15,10 @@ class CostOfCapitalConfig(StrictConfigModel):
     erp: float
     risk_free_fallback: float
     credit_spread: float
+    synthetic_rating: str
+    wacc_band_bps: float
 
-    @field_validator("erp", "risk_free_fallback", "credit_spread")
+    @field_validator("erp", "risk_free_fallback", "credit_spread", "wacc_band_bps")
     @classmethod
     def non_negative(cls, value: float) -> float:
         if value < 0:
@@ -48,6 +50,10 @@ class InvestedCapitalConfig(StrictConfigModel):
 
 class BetaConfig(StrictConfigModel):
     unlevered: float
+    source_name: str
+    source_url: str
+    source_date: str
+    tickers: list[str]
 
     @field_validator("unlevered")
     @classmethod
@@ -56,6 +62,45 @@ class BetaConfig(StrictConfigModel):
             raise ValueError("unlevered beta must be positive")
         return value
 
+    @model_validator(mode="after")
+    def source_backed(self) -> BetaConfig:
+        if not self.source_name or not self.source_date or not self.source_url:
+            raise ValueError("beta requires Damodaran source metadata")
+        if not self.tickers:
+            raise ValueError("beta sector requires covered tickers")
+        return self
+
+
+class DcfScenarioConfig(StrictConfigModel):
+    revenue_growth: float
+    nopat_margin: float
+    sales_to_capital: float
+
+    @field_validator("sales_to_capital")
+    @classmethod
+    def positive(cls, value: float) -> float:
+        if value <= 0:
+            raise ValueError("sales_to_capital must be positive")
+        return value
+
+
+class DcfConfig(StrictConfigModel):
+    forecast_years: int
+    terminal_growth: float
+    reverse_growth_low: float
+    reverse_growth_high: float
+    scenarios: dict[str, DcfScenarioConfig]
+
+    @model_validator(mode="after")
+    def validate_dcf(self) -> DcfConfig:
+        if self.forecast_years <= 0:
+            raise ValueError("forecast_years must be positive")
+        if self.reverse_growth_low >= self.reverse_growth_high:
+            raise ValueError("reverse growth low must be below high")
+        if set(self.scenarios) != {"bear", "base", "bull"}:
+            raise ValueError("dcf scenarios must be bear/base/bull")
+        return self
+
 
 class Config(StrictConfigModel):
     schema_version: str
@@ -63,14 +108,24 @@ class Config(StrictConfigModel):
     tax: TaxConfig
     invested_capital: InvestedCapitalConfig
     betas: dict[str, BetaConfig]
+    dcf: DcfConfig
 
     @model_validator(mode="after")
     def validate_betas(self) -> Config:
         if not self.betas:
             raise ValueError("at least one beta is required")
-        normalized = {ticker.upper(): beta for ticker, beta in self.betas.items()}
+        if "AAPL" in {ticker.upper() for ticker in self.betas}:
+            raise ValueError("AAPL ticker beta placeholder is not allowed; use source-backed sector beta")
+        normalized = {sector: beta for sector, beta in self.betas.items()}
         object.__setattr__(self, "betas", normalized)
         return self
+
+    def beta_for_ticker(self, ticker: str) -> BetaConfig:
+        normalized = ticker.upper().strip()
+        for beta in self.betas.values():
+            if normalized in {covered.upper() for covered in beta.tickers}:
+                return beta
+        raise ValueError(f"missing_beta:{normalized}")
 
 
 def load_config(path: Path | str) -> Config:

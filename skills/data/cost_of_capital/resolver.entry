@@ -1,2 +1,3 @@
 m1_cost_of_capital -> skills.data.cost_of_capital.cost_of_capital:build_cost_of_capital_inputs
-
+m2a_cost_of_capital -> skills.data.cost_of_capital.cost_of_capital:build_cost_of_capital_inputs
+cost_of_capital -> skills.data.cost_of_capital.cost_of_capital:build_cost_of_capital_inputs

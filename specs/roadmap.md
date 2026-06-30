@@ -20,7 +20,7 @@ Minimal happy path on one ticker: `A-1 EDGAR` → `B-1 Normalize` → `B-2 WACC/
 `A-2 Price`, `A-3 CoC`, and `B-3 DCF` (forward and reverse). Golden-fixture tests for each.
 **Done:** a real forward valuation and a reverse-DCF Expectations Line for AAPL, fixture-backed.
 **Spec:** `specs/2026-06-30-valuation-core/`
-**Status:** Spec written; implementation not started.
+**Status:** M2a complete (Price, Cost of Capital, and DCF Accountant bundles). Validated with `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest` and `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync python -m resolver AAPL`.
 
 ### M2b — Gates & routing
 `B-4 Screens` (variant-aware), `B-5 Base-Rate`, and `B-6 Method Router`. Golden-fixture tests for each.

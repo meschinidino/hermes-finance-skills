@@ -1,2 +1,3 @@
 m1_price -> skills.data.price.price:fetch_price
-
+m2a_price -> skills.data.price.price:fetch_price
+ticker_price -> skills.data.price.price:fetch_price
