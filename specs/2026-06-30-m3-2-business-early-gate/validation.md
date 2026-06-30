@@ -149,6 +149,17 @@ M3.2 can be marked complete in `specs/roadmap.md` only after:
 
 ## Validation Result
 
-Status: spec authored, not implemented.
+Status: implemented and validated.
 
-Implementation validation is intentionally pending. This triplet exists for review before any M3.2 code is built.
+Validation completed on 2026-06-30:
+
+```text
+UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest tests/test_m3_2_business_gate.py skills/research/business
+UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest
+UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync python -m resolver AAPL
+```
+
+Results:
+- targeted M3.2 suite: 10 passed;
+- full offline suite: 81 passed, 3 skipped;
+- resolver smoke: passed and emitted Business plus early gate artifacts.

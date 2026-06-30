@@ -1,0 +1,26 @@
+{
+  "business_model_summary": {
+    "draft": "Apple designs, manufactures, and markets smartphones, personal computers, tablets, wearables, accessories, and related services.",
+    "source_label": "Apple FY2024 Form 10-K business description",
+    "excerpt_or_summary": "The business description identifies iPhone, Mac, iPad, Wearables/Home/Accessories, and Services as the core offering groups.",
+    "filing_reference": "AAPL FY2024 Form 10-K, Item 1"
+  },
+  "revenue_driver_summary": {
+    "draft": "The revenue base is product-led, with iPhone and Services the key mix items for understanding growth and margin direction.",
+    "source_label": "Apple FY2024 Form 10-K segment and net sales discussion",
+    "excerpt_or_summary": "The fixture identifies iPhone as the largest product family and Services as a major recurring revenue contributor.",
+    "filing_reference": "AAPL FY2024 Form 10-K, segment net sales discussion"
+  },
+  "customer_end_market_summary": {
+    "draft": "Demand is global and consumer-centered, distributed through direct stores, online channels, and third-party cellular, wholesale, and retail partners.",
+    "source_label": "Apple FY2024 Form 10-K distribution and markets discussion",
+    "excerpt_or_summary": "The fixture describes direct and indirect distribution channels and a broad global consumer and enterprise end market.",
+    "filing_reference": "AAPL FY2024 Form 10-K, distribution section"
+  },
+  "business_understanding_risk": {
+    "draft": "The early gate should focus on whether the analysis can verify durable iPhone demand and Services mix rather than treating historical scale alone as a sufficient business-quality claim.",
+    "source_label": "Apple FY2024 Form 10-K risk and product concentration discussion",
+    "excerpt_or_summary": "The fixture flags dependence on major product cycles and mix as a business-understanding risk for Senior review.",
+    "filing_reference": "AAPL FY2024 Form 10-K, risk factors"
+  }
+}

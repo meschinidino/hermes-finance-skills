@@ -6,13 +6,15 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from skills.audit import audit_artifact, audit_m1_handoff
+from skills.audit import audit_analyst_artifact, audit_artifact, audit_m1_handoff
 from skills.config import load_config
 from skills.data.cost_of_capital.cost_of_capital import build_cost_of_capital_inputs
 from skills.data.edgar.edgar import fetch_edgar_facts
 from skills.data.price.price import fetch_price
 from skills.interfaces import LLM, PriceFeed, Senior, Storage
 from skills.m1_artifacts import EdgarFacts, model_to_payload
+from skills.m3_artifacts import m3_model_to_payload
+from skills.research.business.business import BusinessArtifact, EarlyGateResult, StopArtifact, build_business_artifact
 from skills.storage import LocalStorage
 from skills.synthesis.handoff.handoff import build_handoff
 from skills.valuation.dcf.dcf import build_dcf_artifacts
@@ -33,7 +35,6 @@ def analyze(
     price_feed: PriceFeed | None = None,
 ) -> dict[str, Any]:
     """Run the M1 walking skeleton route for a US-listed ticker."""
-    del senior, llm
 
     normalized_ticker = ticker.upper().strip()
     if not normalized_ticker:
@@ -80,6 +81,49 @@ def analyze(
     handoff_path = f"{run_dir}/handoff.json"
     audit_m1_handoff(handoff, storage=active_storage, path=handoff_path)
 
+    business_path = f"{run_dir}/business.json"
+    business = build_business_artifact(
+        edgar,
+        as_of=run_date,
+        schema_version=config.schema_version,
+        run_dir=run_dir,
+    )
+    audit_analyst_artifact(business, storage=active_storage, path=business_path)
+    gate_result = _run_business_early_gate(
+        business,
+        business_path=business_path,
+        ticker=normalized_ticker,
+        as_of=run_date,
+        schema_version=config.schema_version,
+        senior=senior or _OfflineEarlyGateSenior(),
+        analyst_family=_declared_family(llm) if llm is not None else "offline-business-drafter",
+        storage=active_storage,
+        run_dir=run_dir,
+    )
+    if gate_result.decision == "NO-GO":
+        stop_path = f"{run_dir}/business_stop.json"
+        stop = StopArtifact(
+            header=_header(config.schema_version, "early_gate"),
+            ticker=normalized_ticker,
+            as_of=run_date,
+            gate_name="business_early_gate",
+            gate_decision="NO-GO",
+            stop_reason="business early gate halted the run",
+            gate_rationale=gate_result.rationale,
+            business_artifact_path=business_path,
+            evidence_package=business.source_evidence_summary,
+        )
+        _put_m3_roundtrip(active_storage, stop_path, stop)
+        payload = {
+            "status": "halted",
+            "ticker": normalized_ticker,
+            "as_of": run_date.isoformat(),
+            "business": active_storage.get_json(business_path),
+            "early_gate": active_storage.get_json(f"{run_dir}/business_early_gate.json"),
+            "stop_artifact": active_storage.get_json(stop_path),
+        }
+        return payload
+
     industry_classification = _industry_classification(normalized_ticker, config)
     gate_card = build_gate_card(
         edgar,
@@ -104,6 +148,8 @@ def analyze(
         audit_artifact(expectations_line, storage=active_storage, path=f"{run_dir}/expectations_line.json")
 
     payload = active_storage.get_json(handoff_path)
+    payload["business"] = active_storage.get_json(business_path)
+    payload["early_gate"] = active_storage.get_json(f"{run_dir}/business_early_gate.json")
     payload["gate_card"] = active_storage.get_json(f"{run_dir}/gate_card.json")
     payload["method_directive"] = active_storage.get_json(f"{run_dir}/method_directive.json")
     if method_directive.method != "DCF":
@@ -113,6 +159,95 @@ def analyze(
     payload["expectations_line"] = active_storage.get_json(f"{run_dir}/expectations_line.json")
 
     return payload
+
+
+class GateWiringError(ValueError):
+    pass
+
+
+class _OfflineEarlyGateSenior:
+    model_family = "offline-senior"
+    decided_by = "offline-senior"
+
+    def gate(self, package: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "decision": "GO",
+            "rationale": "offline deterministic M3.2 early gate accepted audited Business artifact",
+            "decided_by": self.decided_by,
+            "ticker": package["ticker"],
+        }
+
+    def ratify(self, package: dict[str, Any]) -> dict[str, Any]:
+        raise NotImplementedError("M3.2 does not implement consolidated ratification")
+
+
+def _run_business_early_gate(
+    business: BusinessArtifact,
+    *,
+    business_path: str,
+    ticker: str,
+    as_of: date,
+    schema_version: str,
+    senior: Senior,
+    analyst_family: str,
+    storage: Storage,
+    run_dir: str,
+) -> EarlyGateResult:
+    senior_family = _declared_family(senior)
+    if not analyst_family or not senior_family:
+        raise GateWiringError("analyst and senior adapters must declare model families")
+    if analyst_family == senior_family:
+        raise GateWiringError(f"analyst and senior model families must differ: {analyst_family}")
+
+    gate_response = senior.gate(
+        {
+            "gate_name": "business_early_gate",
+            "ticker": ticker,
+            "as_of": as_of.isoformat(),
+            "business_artifact_path": business_path,
+            "business_artifact": m3_model_to_payload(business),
+        }
+    )
+    decision = str(gate_response.get("decision", "")).upper()
+    if decision not in {"GO", "NO-GO"}:
+        raise ValueError(f"invalid early gate decision: {decision}")
+    result = EarlyGateResult(
+        header=_header(schema_version, "early_gate"),
+        ticker=ticker,
+        as_of=as_of,
+        gate_name="business_early_gate",
+        decision=decision,
+        rationale=str(gate_response.get("rationale") or gate_response.get("reason") or "no rationale supplied"),
+        decided_by=str(gate_response.get("decided_by") or gate_response.get("senior") or senior_family),
+        business_artifact_path=business_path,
+    )
+    _put_m3_roundtrip(storage, f"{run_dir}/business_early_gate.json", result)
+    return result
+
+
+def _declared_family(adapter: Any) -> str | None:
+    if adapter is None:
+        return None
+    for attr in ("model_family", "model_handle", "senior_handle"):
+        value = getattr(adapter, attr, None)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def _put_m3_roundtrip(storage: Storage, path: str, artifact) -> None:
+    payload = m3_model_to_payload(artifact)
+    storage.put_json(path, payload)
+    if storage.get_json(path) != payload:
+        raise RuntimeError(f"storage round-trip failed: {path}")
+
+
+def _header(schema_version: str, produced_by: str):
+    from datetime import datetime, timezone
+
+    from skills._primitives import Header
+
+    return Header(schema_version=schema_version, produced_by=produced_by, produced_at=datetime.now(timezone.utc))
 
 
 def _source_accessions(edgar: EdgarFacts) -> list[str]:

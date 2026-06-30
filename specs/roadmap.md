@@ -37,6 +37,8 @@ Typed M3 artifacts, ratifiable collection, Analyst audit checks, deterministic f
 ### M3.2 — Business + early gate
 `C-1 Business` Analyst bundle and the one early GO/NO-GO gate after Business understanding. LLM injected; Senior injected.
 **Done:** Business draft is evidence-backed and schema-valid; `Senior.gate` is called exactly once after Business; GO continues and NO-GO halts with a filed stop artifact.
+**Spec:** `specs/2026-06-30-m3-2-business-early-gate/`
+**Status:** M3.2 complete (fixture-backed C-1 Business Analyst bundle, audit-enforced evidence refs, early gate family-independence check, GO continuation, and NO-GO stop artifact). Validated with `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest`, `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest tests/test_m3_2_business_gate.py skills/research/business`, and `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync python -m resolver AAPL`.
 
 ### M3.3 — Moat + capital allocation
 `C-2 Moat` and `C-3 CapAlloc` Analyst bundles. Each emits evidence-backed `needs_ratification` drafts mapped to the Senior checklist.
