@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 from skills._primitives import Number
 from skills.m1_artifacts import BaseRateResult, ExpectationsLine, GateCard, MethodDirective, Spine, ValuationRange, iter_numbers, model_to_payload
+from skills.m3_artifacts import AnalystDraft, EvidenceRef, ReviewItem, SeniorDecisionPackage, SeniorReviewPackage, m3_model_to_payload
 from skills.interfaces import Storage
 
 
@@ -56,6 +57,45 @@ def audit_artifact(artifact: BaseModel, *, storage: Storage | None = None, path:
             raise AuditError("storage round-trip failed")
 
 
+def audit_analyst_artifact(artifact: BaseModel, *, storage: Storage | None = None, path: str | None = None) -> None:
+    drafts = _iter_m3_values(artifact, AnalystDraft)
+    if not drafts:
+        raise AuditError("analyst artifact has no ratifiable drafts")
+    for draft in drafts:
+        _audit_analyst_draft(draft)
+    for number in iter_numbers(artifact):
+        _audit_number(number, require_input_refs=True)
+    if storage and path:
+        payload = m3_model_to_payload(artifact)
+        storage.put_json(path, payload)
+        if storage.get_json(path) != payload:
+            raise AuditError("storage round-trip failed")
+
+
+def audit_senior_review_package(package: SeniorReviewPackage, *, storage: Storage | None = None, path: str | None = None) -> None:
+    if not package.review_items:
+        raise AuditError("senior review package requires review items")
+    for item in package.review_items:
+        _audit_review_item(item)
+    if storage and path:
+        payload = m3_model_to_payload(package)
+        storage.put_json(path, payload)
+        if storage.get_json(path) != payload:
+            raise AuditError("storage round-trip failed")
+
+
+def audit_senior_decision_package(package: SeniorDecisionPackage, *, storage: Storage | None = None, path: str | None = None) -> None:
+    if not package.is_complete:
+        raise AuditError("senior decision package missing required decisions")
+    for item_id, decision in package.decisions.items():
+        _audit_no_bare_numeric_payload(decision.final, f"decisions.{item_id}.final")
+    if storage and path:
+        payload = m3_model_to_payload(package)
+        storage.put_json(path, payload)
+        if storage.get_json(path) != payload:
+            raise AuditError("storage round-trip failed")
+
+
 def _audit_number(number: Number, *, require_input_refs: bool = False) -> None:
     if number.provenance is None:
         raise AuditError("number missing provenance")
@@ -67,6 +107,73 @@ def _audit_number(number: Number, *, require_input_refs: bool = False) -> None:
         raise AuditError("computed estimate derivation missing input references")
     if not math.isfinite(number.value):
         raise AuditError("number must be finite")
+
+
+def _audit_analyst_draft(draft: AnalystDraft) -> None:
+    if not draft.needs_ratification:
+        raise AuditError("analyst drafts must need ratification")
+    if not draft.evidence_refs:
+        raise AuditError("analyst draft missing evidence refs")
+    for evidence in draft.evidence_refs:
+        _audit_evidence_ref(evidence)
+    _audit_no_bare_numeric_payload(draft.draft, "AnalystDraft.draft")
+    _audit_no_bare_numeric_payload(draft.final, "AnalystDraft.final")
+    if draft.final is not None and (draft.decision is None or not draft.decided_by):
+        raise AuditError("analyst draft asserts a final value without Senior decision")
+
+
+def _audit_review_item(item: ReviewItem) -> None:
+    if not item.evidence_refs:
+        raise AuditError("review item missing evidence refs")
+    for evidence in item.evidence_refs:
+        _audit_evidence_ref(evidence)
+    _audit_no_bare_numeric_payload(item.draft, f"{item.source_field_path}.draft")
+    _audit_no_bare_numeric_payload(item.final, f"{item.source_field_path}.final")
+    if item.final is not None and (item.decision is None or not item.decided_by):
+        raise AuditError("review item asserts a final value without Senior decision")
+
+
+def _audit_evidence_ref(evidence: EvidenceRef) -> None:
+    if not evidence.source_label.strip():
+        raise AuditError("evidence ref missing source label")
+    if not evidence.excerpt_or_summary.strip():
+        raise AuditError("evidence ref missing excerpt or summary")
+    if not evidence.has_resolvable_trace_target:
+        raise AuditError("evidence ref missing resolvable trace target")
+
+
+def _audit_no_bare_numeric_payload(value: Any, path: str) -> None:
+    if isinstance(value, Number):
+        return
+    if isinstance(value, bool) or value is None:
+        return
+    if isinstance(value, int | float):
+        raise AuditError(f"{path} contains bare numeric value")
+    if isinstance(value, dict):
+        for key, item in value.items():
+            _audit_no_bare_numeric_payload(item, f"{path}.{key}")
+        return
+    if isinstance(value, list | tuple):
+        for index, item in enumerate(value):
+            _audit_no_bare_numeric_payload(item, f"{path}[{index}]")
+
+
+def _iter_m3_values(value: Any, target_type: type) -> list[Any]:
+    matches: list[Any] = []
+    if isinstance(value, target_type):
+        return [value]
+    if isinstance(value, BaseModel):
+        for field_name in value.__class__.model_fields:
+            matches.extend(_iter_m3_values(getattr(value, field_name), target_type))
+        return matches
+    if isinstance(value, dict):
+        for item in value.values():
+            matches.extend(_iter_m3_values(item, target_type))
+        return matches
+    if isinstance(value, list | tuple):
+        for item in value:
+            matches.extend(_iter_m3_values(item, target_type))
+    return matches
 
 
 def _find_spine(value: Any) -> Spine:

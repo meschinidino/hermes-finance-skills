@@ -32,7 +32,7 @@ Minimal happy path on one ticker: `A-1 EDGAR` → `B-1 Normalize` → `B-2 WACC/
 Typed M3 artifacts, ratifiable collection, Analyst audit checks, deterministic fake `LLM`/`Senior` adapters for offline tests, and bundle validation rules for Analyst skill shape.
 **Done:** M3 artifacts can be constructed, audited, stored, and collected into a review package without invoking live LLMs or implementing Analyst bundles.
 **Spec:** `specs/2026-06-30-m3-1-contracts-infrastructure/`
-**Status:** planned.
+**Status:** M3.1 complete (typed M3 contracts, derived-only ratification, Analyst audit checks, ratifiable collection, test-only fake adapters, and bundle-shape validation). Validated with `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest` and `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync python -m resolver AAPL`.
 
 ### M3.2 — Business + early gate
 `C-1 Business` Analyst bundle and the one early GO/NO-GO gate after Business understanding. LLM injected; Senior injected.
