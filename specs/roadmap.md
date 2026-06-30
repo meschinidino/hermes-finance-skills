@@ -16,9 +16,17 @@ Minimal happy path on one ticker: `A-1 EDGAR` → `B-1 Normalize` → `B-2 WACC/
 **Spec:** `specs/2026-06-29-walking-skeleton/`
 **Status:** M1 complete (fixture-backed EDGAR → Normalize → Spine → bare Handoff). Validated with `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest` and `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync python -m resolver AAPL`.
 
-### M2 — Complete the Accountants
-Full Data + Valuation depts: `A-2 Price`, `A-3 CoC`, `B-3 DCF` (forward **and** reverse), `B-4 Screens` (variant-aware), `B-5 Base-Rate`, `B-6 Method Router`. Golden-fixture tests for each (pure TDD).
-**Done:** Gate Card, full Financial Panel, Expectations Line (reverse DCF), and a forward valuation — all reproducible and fixture-backed.
+### M2a — Valuation core
+`A-2 Price`, `A-3 CoC`, and `B-3 DCF` (forward and reverse). Golden-fixture tests for each.
+**Done:** a real forward valuation and a reverse-DCF Expectations Line for AAPL, fixture-backed.
+**Spec:** `specs/2026-06-30-valuation-core/`
+**Status:** Spec written; implementation not started.
+
+### M2b — Gates & routing
+`B-4 Screens` (variant-aware), `B-5 Base-Rate`, and `B-6 Method Router`. Golden-fixture tests for each.
+**Done:** a populated Gate Card and a method directive that routes asset class to the right valuation tool, fixture-backed.
+**Spec:** pending
+**Status:** Not started.
 
 ### M3 — The Analysts + ratify wiring
 Research dept: `C-1 Business`, `C-2 Moat`, `C-3 CapAlloc`, `C-4 Scenarios`, `C-5 Edge & Cruxes`, `C-6 Risk`. Each emits `needs_ratification` drafts with evidence. Wire the draft → collect → `Senior.ratify` flow + the early GO/NO-GO gate. LLM injected.
@@ -37,4 +45,4 @@ Worked-example exemplar on a real ticker (highest-ROI learning aid); containeriz
 
 ---
 
-**Critical path through the build:** M0 → **M1** → M2 → M3 → M4. M5/M6 thicken a proven system. If time is short, a credible end-to-end demo exists at the end of M4; everything after improves trust and reach, not core function.
+**Critical path through the build:** M0 → M1 → **M2a** → M2b → M3 → M4. M5/M6 thicken a proven system. If time is short, a credible end-to-end demo exists at the end of M4; everything after improves trust and reach, not core function.
