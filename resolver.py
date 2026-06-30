@@ -6,15 +6,17 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from skills.audit import audit_analyst_artifact, audit_artifact, audit_m1_handoff
+from skills.audit import audit_analyst_artifact, audit_artifact, audit_m1_handoff, audit_senior_review_package
 from skills.config import load_config
 from skills.data.cost_of_capital.cost_of_capital import build_cost_of_capital_inputs
 from skills.data.edgar.edgar import fetch_edgar_facts
 from skills.data.price.price import fetch_price
 from skills.interfaces import LLM, PriceFeed, Senior, Storage
 from skills.m1_artifacts import EdgarFacts, model_to_payload
-from skills.m3_artifacts import m3_model_to_payload
+from skills.m3_artifacts import collect_ratifiables, m3_model_to_payload
 from skills.research.business.business import BusinessArtifact, EarlyGateResult, StopArtifact, build_business_artifact
+from skills.research.capalloc.capalloc import build_capalloc_artifact
+from skills.research.moat.moat import build_moat_artifact
 from skills.storage import LocalStorage
 from skills.synthesis.handoff.handoff import build_handoff
 from skills.valuation.dcf.dcf import build_dcf_artifacts
@@ -124,6 +126,42 @@ def analyze(
         }
         return payload
 
+    moat_path = f"{run_dir}/moat.json"
+    moat = build_moat_artifact(
+        edgar,
+        spine,
+        as_of=run_date,
+        schema_version=config.schema_version,
+        run_dir=run_dir,
+    )
+    audit_analyst_artifact(moat, storage=active_storage, path=moat_path)
+    moat_review = collect_ratifiables(
+        moat,
+        ticker=normalized_ticker,
+        as_of=run_date,
+        header=_header(config.schema_version, "C-2-review"),
+        source_artifact=moat_path,
+    )
+    audit_senior_review_package(moat_review, storage=active_storage, path=f"{run_dir}/moat_review_package.json")
+
+    capalloc_path = f"{run_dir}/capalloc.json"
+    capalloc = build_capalloc_artifact(
+        edgar,
+        spine,
+        as_of=run_date,
+        schema_version=config.schema_version,
+        run_dir=run_dir,
+    )
+    audit_analyst_artifact(capalloc, storage=active_storage, path=capalloc_path)
+    capalloc_review = collect_ratifiables(
+        capalloc,
+        ticker=normalized_ticker,
+        as_of=run_date,
+        header=_header(config.schema_version, "C-3-review"),
+        source_artifact=capalloc_path,
+    )
+    audit_senior_review_package(capalloc_review, storage=active_storage, path=f"{run_dir}/capalloc_review_package.json")
+
     industry_classification = _industry_classification(normalized_ticker, config)
     gate_card = build_gate_card(
         edgar,
@@ -150,6 +188,10 @@ def analyze(
     payload = active_storage.get_json(handoff_path)
     payload["business"] = active_storage.get_json(business_path)
     payload["early_gate"] = active_storage.get_json(f"{run_dir}/business_early_gate.json")
+    payload["moat"] = active_storage.get_json(moat_path)
+    payload["moat_review_package"] = active_storage.get_json(f"{run_dir}/moat_review_package.json")
+    payload["capalloc"] = active_storage.get_json(capalloc_path)
+    payload["capalloc_review_package"] = active_storage.get_json(f"{run_dir}/capalloc_review_package.json")
     payload["gate_card"] = active_storage.get_json(f"{run_dir}/gate_card.json")
     payload["method_directive"] = active_storage.get_json(f"{run_dir}/method_directive.json")
     if method_directive.method != "DCF":

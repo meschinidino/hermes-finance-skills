@@ -1,0 +1,2 @@
+{"id":"valid_aapl_capalloc","ticker":"AAPL","expected":"audits_and_collects"}
+{"id":"period_mismatch","ticker":"AAPL","expected":"rejects_period_mismatch"}

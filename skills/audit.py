@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import re
 from typing import Any
 
 from pydantic import BaseModel
@@ -63,6 +64,9 @@ def audit_analyst_artifact(artifact: BaseModel, *, storage: Storage | None = Non
         raise AuditError("analyst artifact has no ratifiable drafts")
     for draft in drafts:
         _audit_analyst_draft(draft)
+    _audit_m3_3_period_consistency(drafts, storage=storage)
+    if artifact.__class__.__name__ == "MoatArtifact":
+        _audit_metric_only_moat(artifact)
     for number in iter_numbers(artifact):
         _audit_number(number, require_input_refs=True)
     if storage and path:
@@ -140,6 +144,102 @@ def _audit_evidence_ref(evidence: EvidenceRef) -> None:
         raise AuditError("evidence ref missing excerpt or summary")
     if not evidence.has_resolvable_trace_target:
         raise AuditError("evidence ref missing resolvable trace target")
+
+
+def _audit_m3_3_period_consistency(drafts: list[AnalystDraft], *, storage: Storage | None) -> None:
+    for draft in drafts:
+        period_specific = _contains_period_specific_claim(draft.draft)
+        for evidence in draft.evidence_refs:
+            claimed_period = evidence.claimed_period.strip() if evidence.claimed_period else None
+            if period_specific and not claimed_period:
+                raise AuditError("period-specific claim missing claimed period")
+            if not claimed_period:
+                continue
+            resolved_period = _resolve_evidence_period(evidence, storage=storage)
+            if claimed_period and resolved_period and claimed_period != resolved_period:
+                raise AuditError(f"period mismatch: claimed {claimed_period} resolved {resolved_period}")
+
+
+def _resolve_evidence_period(evidence: EvidenceRef, *, storage: Storage | None) -> str:
+    if storage is None:
+        raise AuditError("unresolvable-source: storage required for period consistency")
+    if not evidence.artifact_path or not evidence.artifact_path.strip():
+        raise AuditError("unresolvable-source: evidence ref missing artifact path")
+    try:
+        payload = storage.get_json(evidence.artifact_path.strip())
+    except Exception as exc:
+        raise AuditError(f"unresolvable-source: {evidence.artifact_path}") from exc
+    resolved_period = _period_from_stored_artifact(payload)
+    if not resolved_period:
+        raise AuditError(f"unresolvable-source: stored artifact missing period: {evidence.artifact_path}")
+    return resolved_period
+
+
+def _period_from_stored_artifact(payload: dict[str, Any]) -> str | None:
+    direct_period = payload.get("period")
+    if isinstance(direct_period, str) and direct_period.strip():
+        return direct_period.strip()
+    header = payload.get("header")
+    if isinstance(header, dict):
+        header_period = header.get("period")
+        if isinstance(header_period, str) and header_period.strip():
+            return header_period.strip()
+    years = payload.get("years")
+    if isinstance(years, list) and years and isinstance(years[-1], str) and years[-1].strip():
+        return years[-1].strip()
+    return None
+
+
+def _contains_period_specific_claim(value: Any) -> bool:
+    text = _flatten_text(value)
+    return bool(re.search(r"\b(?:FY20\d{2}|Q[1-4][ -]?20\d{2})\b", text))
+
+
+def _flatten_text(value: Any) -> str:
+    if isinstance(value, str):
+        return value
+    if isinstance(value, dict):
+        return " ".join(_flatten_text(item) for item in value.values())
+    if isinstance(value, list | tuple):
+        return " ".join(_flatten_text(item) for item in value)
+    return ""
+
+
+def _audit_metric_only_moat(artifact: BaseModel) -> None:
+    mechanism = getattr(artifact, "moat_mechanism", None)
+    if not isinstance(mechanism, AnalystDraft):
+        raise AuditError("moat artifact missing moat mechanism draft")
+    draft = mechanism.draft
+    if not isinstance(draft, dict):
+        raise AuditError("moat mechanism draft must expose support categories")
+    support_categories = {str(item).strip() for item in draft.get("support_categories", [])}
+    mechanism_category = str(draft.get("mechanism_category", "")).strip()
+    claim = _flatten_text(draft).lower()
+    forward_categories = {
+        "switching_costs",
+        "network_effects",
+        "scale_advantage",
+        "cost_advantage",
+        "intangible_assets",
+        "regulatory_position",
+        "distribution_advantage",
+        "forward_mechanism",
+    }
+    historical_categories = {
+        "historical_economics",
+        "roic_spread",
+        "wacc_spread",
+        "margin_history",
+        "returns_above_cost_of_capital",
+    }
+    has_forward_support = bool(support_categories & forward_categories) and bool(mechanism_category)
+    if not has_forward_support:
+        raise AuditError("moat durability claim requires evidenced forward-looking mechanism")
+    if support_categories and support_categories <= historical_categories:
+        raise AuditError("metric-only moat durability claim rejected")
+    asserts_durability = any(term in claim for term in ("durable", "durability", "moat", "protect", "proves"))
+    if asserts_durability and not has_forward_support:
+        raise AuditError("metric-only moat durability claim rejected")
 
 
 def _audit_no_bare_numeric_payload(value: Any, path: str) -> None:

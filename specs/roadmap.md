@@ -43,6 +43,8 @@ Typed M3 artifacts, ratifiable collection, Analyst audit checks, deterministic f
 ### M3.3 — Moat + capital allocation
 `C-2 Moat` and `C-3 CapAlloc` Analyst bundles. Each emits evidence-backed `needs_ratification` drafts mapped to the Senior checklist.
 **Done:** moat and capital-allocation drafts are ratifiable, evidence-backed, and reject unsupported claims such as "historical ROIC spread alone proves a moat."
+**Spec:** `specs/2026-06-30-m3-3-moat-capalloc/`
+**Status:** M3.3 complete (fixture-backed C-2 Moat and C-3 CapAlloc Analyst bundles, period-consistency audit, metric-only moat rejection, and undecided Senior review package collection). Validated with `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest`, `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest skills/research/moat skills/research/capalloc`, and `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync python -m resolver AAPL`.
 
 ### M3.4 — Scenarios
 `C-4 Scenarios` Analyst bundle. Builds bear/base/bull draft assumptions from the existing artifacts, checks base rates, and respects the Method Router.
