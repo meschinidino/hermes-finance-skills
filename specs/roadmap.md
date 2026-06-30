@@ -28,9 +28,35 @@ Minimal happy path on one ticker: `A-1 EDGAR` → `B-1 Normalize` → `B-2 WACC/
 **Spec:** `specs/2026-06-30-gates-and-routing/`
 **Status:** M2b complete (Screens, Base-Rate, and Method Router Accountant bundles). Validated with `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest` and `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync python -m resolver AAPL`.
 
-### M3 — The Analysts + ratify wiring
-Research dept: `C-1 Business`, `C-2 Moat`, `C-3 CapAlloc`, `C-4 Scenarios`, `C-5 Edge & Cruxes`, `C-6 Risk`. Each emits `needs_ratification` drafts with evidence. Wire the draft → collect → `Senior.ratify` flow + the early GO/NO-GO gate. LLM injected.
-**Done:** a full draft package with every judgment flagged, ratifiable in one pass; the biotech-DCF guard and the steelman/counterparty brakes verified by red-team prompts.
+### M3.1 — Analyst contracts & infrastructure
+Typed M3 artifacts, ratifiable collection, Analyst audit checks, deterministic fake `LLM`/`Senior` adapters for offline tests, and bundle validation rules for Analyst skill shape.
+**Done:** M3 artifacts can be constructed, audited, stored, and collected into a review package without invoking live LLMs or implementing Analyst bundles.
+**Spec:** `specs/2026-06-30-m3-1-contracts-infrastructure/`
+**Status:** planned.
+
+### M3.2 — Business + early gate
+`C-1 Business` Analyst bundle and the one early GO/NO-GO gate after Business understanding. LLM injected; Senior injected.
+**Done:** Business draft is evidence-backed and schema-valid; `Senior.gate` is called exactly once after Business; GO continues and NO-GO halts with a filed stop artifact.
+
+### M3.3 — Moat + capital allocation
+`C-2 Moat` and `C-3 CapAlloc` Analyst bundles. Each emits evidence-backed `needs_ratification` drafts mapped to the Senior checklist.
+**Done:** moat and capital-allocation drafts are ratifiable, evidence-backed, and reject unsupported claims such as "historical ROIC spread alone proves a moat."
+
+### M3.4 — Scenarios
+`C-4 Scenarios` Analyst bundle. Builds bear/base/bull draft assumptions from the existing artifacts, checks base rates, and respects the Method Router.
+**Done:** scenario assumptions are driver-tied and base-rate checked; probabilities remain Senior-owned ratifiables; optionality/pre-revenue names are not forced into plain DCF.
+
+### M3.5 — Edge & cruxes
+`C-5 Edge & Cruxes` Analyst bundle with the steelman, counterparty, structural mispricing, catalysts, and exactly three falsifiable cruxes.
+**Done:** edge drafts reject trivial counterparties, include a no-trade steelman, and emit exactly three measurable cruxes.
+
+### M3.6 — Risk
+`C-6 Risk` Analyst bundle. Produces pre-mortem, short-seller bear case, two-bucket risk register, bear-case value, and kill metric.
+**Done:** risk drafts include non-empty tail risks, a falsifiable kill metric, and ratifiable risk completeness.
+
+### M3.7 — Ratify aggregation
+Collect M2b and M3 ratifiables into one `SeniorReviewPackage`, call `Senior.ratify` once, and persist the Senior decision package for M4 synthesis.
+**Done:** every required judgment is present in one consolidated package and every item has a Senior decision before the package can be treated as ratified.
 
 ### M4 — Synthesis + the resolver
 `D-2 Conviction`, `D-3 Review Packager`; complete `resolver.md` behavior — routing table, escalation matrix, parallelism, KILL halt, the two Senior touchpoints. Full Handoff schema with revisit triggers.
@@ -45,4 +71,4 @@ Worked-example exemplar on a real ticker (highest-ROI learning aid); containeriz
 
 ---
 
-**Critical path through the build:** M0 → M1 → **M2a** → M2b → M3 → M4. M5/M6 thicken a proven system. If time is short, a credible end-to-end demo exists at the end of M4; everything after improves trust and reach, not core function.
+**Critical path through the build:** M0 → M1 → **M2a** → M2b → M3.1 → M3.2 → M3.3 → M3.4 → M3.5 → M3.6 → M3.7 → M4. M5/M6 thicken a proven system. If time is short, a credible end-to-end demo exists at the end of M4; everything after improves trust and reach, not core function.
