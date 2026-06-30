@@ -37,6 +37,17 @@ def test_missing_required_concept_fails_closed(tmp_path: Path) -> None:
         fetch_edgar_facts("AAPL", fixture_dir=fixture_dir)
 
 
+def test_missing_required_screen_concept_fails_closed(tmp_path: Path) -> None:
+    fixture_dir = _copy_fixtures(tmp_path)
+    facts_path = fixture_dir / "aapl_companyfacts.json"
+    raw = json.loads(facts_path.read_text(encoding="utf-8"))
+    del raw["facts"]["us-gaap"]["AccountsReceivableNetCurrent"]
+    facts_path.write_text(json.dumps(raw), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="unresolved_concept:receivables"):
+        fetch_edgar_facts("AAPL", fixture_dir=fixture_dir)
+
+
 def test_less_than_five_annual_periods_fails_closed(tmp_path: Path) -> None:
     fixture_dir = _copy_fixtures(tmp_path)
     facts_path = fixture_dir / "aapl_companyfacts.json"

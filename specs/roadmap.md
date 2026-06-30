@@ -26,7 +26,7 @@ Minimal happy path on one ticker: `A-1 EDGAR` → `B-1 Normalize` → `B-2 WACC/
 `B-4 Screens` (variant-aware), `B-5 Base-Rate`, and `B-6 Method Router`. Golden-fixture tests for each.
 **Done:** a populated Gate Card and a method directive that routes asset class to the right valuation tool, fixture-backed.
 **Spec:** `specs/2026-06-30-gates-and-routing/`
-**Status:** Not started.
+**Status:** M2b complete (Screens, Base-Rate, and Method Router Accountant bundles). Validated with `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest` and `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync python -m resolver AAPL`.
 
 ### M3 — The Analysts + ratify wiring
 Research dept: `C-1 Business`, `C-2 Moat`, `C-3 CapAlloc`, `C-4 Scenarios`, `C-5 Edge & Cruxes`, `C-6 Risk`. Each emits `needs_ratification` drafts with evidence. Wire the draft → collect → `Senior.ratify` flow + the early GO/NO-GO gate. LLM injected.

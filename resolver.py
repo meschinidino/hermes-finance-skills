@@ -15,8 +15,10 @@ from skills.interfaces import LLM, PriceFeed, Senior, Storage
 from skills.m1_artifacts import EdgarFacts, model_to_payload
 from skills.storage import LocalStorage
 from skills.synthesis.handoff.handoff import build_handoff
-from skills.valuation.normalize.normalize import normalize_financials
 from skills.valuation.dcf.dcf import build_dcf_artifacts
+from skills.valuation.method_router.method_router import route_method
+from skills.valuation.normalize.normalize import normalize_financials
+from skills.valuation.screens.screens import build_gate_card
 from skills.valuation.spine.spine import build_spine
 
 
@@ -78,11 +80,35 @@ def analyze(
     handoff_path = f"{run_dir}/handoff.json"
     audit_m1_handoff(handoff, storage=active_storage, path=handoff_path)
 
-    valuation_range, expectations_line = build_dcf_artifacts(normalized, edgar, price, cost_of_capital, config)
-    audit_artifact(valuation_range, storage=active_storage, path=f"{run_dir}/valuation_range.json")
-    audit_artifact(expectations_line, storage=active_storage, path=f"{run_dir}/expectations_line.json")
+    industry_classification = _industry_classification(normalized_ticker, config)
+    gate_card = build_gate_card(
+        edgar,
+        price,
+        industry_classification=industry_classification,
+        schema_version=config.schema_version,
+    )
+    audit_artifact(gate_card, storage=active_storage, path=f"{run_dir}/gate_card.json")
+
+    method_directive = route_method(
+        normalized,
+        edgar,
+        config,
+        industry_classification=industry_classification,
+        schema_version=config.schema_version,
+    )
+    audit_artifact(method_directive, storage=active_storage, path=f"{run_dir}/method_directive.json")
+
+    if method_directive.method == "DCF":
+        valuation_range, expectations_line = build_dcf_artifacts(normalized, edgar, price, cost_of_capital, config)
+        audit_artifact(valuation_range, storage=active_storage, path=f"{run_dir}/valuation_range.json")
+        audit_artifact(expectations_line, storage=active_storage, path=f"{run_dir}/expectations_line.json")
 
     payload = active_storage.get_json(handoff_path)
+    payload["gate_card"] = active_storage.get_json(f"{run_dir}/gate_card.json")
+    payload["method_directive"] = active_storage.get_json(f"{run_dir}/method_directive.json")
+    if method_directive.method != "DCF":
+        payload["valuation_deferred"] = method_directive.fallback_behavior
+        return payload
     payload["valuation_range"] = active_storage.get_json(f"{run_dir}/valuation_range.json")
     payload["expectations_line"] = active_storage.get_json(f"{run_dir}/expectations_line.json")
 
@@ -97,6 +123,13 @@ def _source_accessions(edgar: EdgarFacts) -> list[str]:
             if accession and accession != "explicit-zero":
                 accessions.add(accession)
     return sorted(accessions)
+
+
+def _industry_classification(ticker: str, config) -> str:
+    for sector, beta in config.betas.items():
+        if ticker.upper() in {item.upper() for item in beta.tickers}:
+            return sector
+    raise ValueError(f"missing_industry_classification:{ticker}")
 
 
 def main() -> None:

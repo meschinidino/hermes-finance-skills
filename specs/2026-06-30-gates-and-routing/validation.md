@@ -120,7 +120,7 @@ M2b can be marked complete in `specs/roadmap.md` only after:
 
 ## Validation Result
 
-Status: spec written only; implementation not started.
+Status: implemented and validated.
 
 Document-validated on 2026-06-30:
 - M2b is scoped to `B-4 Screens`, `B-5 Base-Rate`, and `B-6 Method Router`.
@@ -128,3 +128,12 @@ Document-validated on 2026-06-30:
 - The Method Router is specified as resolver-wired and load-bearing, not a standalone unused skill.
 - DCF invocation is specified as conditional on the router directive.
 - The validation plan includes manufacturer, non-manufacturer, and emerging-market Altman variant checks plus lit-screen, base-rate, router integration, and filing-schema checks.
+
+Implementation-validated on 2026-06-30:
+- `B-4 Screens`, `B-5 Base-Rate`, and `B-6 Method Router` bundles were added with completed Accountant `SKILL.md` files and resolver entries.
+- `GateCard`, `BaseRateResult`, and `MethodDirective` were added as pydantic artifacts.
+- `analyze("AAPL")` files `gate_card.json` and `method_directive.json`; DCF runs only when the directive selects `DCF`.
+- Optionality/pre-revenue routing was verified to defer valuation and not call DCF.
+- Validation commands passed:
+  - `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest`
+  - `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync python -m resolver AAPL`

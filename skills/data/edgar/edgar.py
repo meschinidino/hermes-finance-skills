@@ -4,6 +4,7 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from dataclasses import dataclass
 
 from skills._primitives import Number, Provenance
 from skills.m1_artifacts import EdgarConceptSet, EdgarFacts
@@ -18,6 +19,21 @@ CONCEPT_FALLBACKS = {
         "us-gaap:SalesRevenueNet",
     ],
     "cash": ["us-gaap:CashAndCashEquivalentsAtCarryingValue"],
+    "total_assets": ["us-gaap:Assets"],
+    "current_assets": ["us-gaap:AssetsCurrent"],
+    "total_liabilities": ["us-gaap:Liabilities"],
+    "current_liabilities": ["us-gaap:LiabilitiesCurrent"],
+    "retained_earnings": ["us-gaap:RetainedEarningsAccumulatedDeficit"],
+    "receivables": ["us-gaap:ReceivablesNetCurrent", "us-gaap:AccountsReceivableNetCurrent"],
+    "cost_of_revenue": ["us-gaap:CostOfGoodsAndServicesSold", "us-gaap:CostOfRevenue"],
+    "operating_cash_flow": ["us-gaap:NetCashProvidedByUsedInOperatingActivities"],
+    "net_income": ["us-gaap:NetIncomeLoss"],
+    "depreciation_amortization": [
+        "us-gaap:DepreciationDepletionAndAmortization",
+        "us-gaap:DepreciationDepletionAndAmortizationExpense",
+    ],
+    "selling_general_admin": ["us-gaap:SellingGeneralAndAdministrativeExpense"],
+    "inventory": ["us-gaap:InventoryNet"],
     "long_term_debt_noncurrent": ["us-gaap:LongTermDebtNoncurrent", "us-gaap:LongTermDebt"],
     "long_term_debt_current": ["us-gaap:LongTermDebtCurrent"],
     "short_term_borrowings": ["us-gaap:ShortTermBorrowings", "us-gaap:DebtCurrent"],
@@ -33,6 +49,12 @@ CONCEPT_FALLBACKS = {
 OPTIONAL_ZERO_CONCEPTS = {"goodwill", "short_term_borrowings", "interest_expense"}
 
 
+@dataclass(frozen=True)
+class ExtractedConcept:
+    values: list[Number]
+    tag: str
+
+
 def fetch_edgar_facts(ticker: str, *, fixture_dir: Path = FIXTURE_DIR) -> EdgarFacts:
     normalized = ticker.upper().strip()
     cik = resolve_cik(normalized, fixture_dir=fixture_dir)
@@ -43,13 +65,17 @@ def fetch_edgar_facts(ticker: str, *, fixture_dir: Path = FIXTURE_DIR) -> EdgarF
     flags: list[str] = []
 
     for concept_name, fallback_tags in CONCEPT_FALLBACKS.items():
-        values = _extract_concept(raw, fallback_tags, years, retrieved_at)
-        if values is None:
+        extracted = _extract_concept(raw, fallback_tags, years, retrieved_at)
+        if extracted is None:
             if concept_name in OPTIONAL_ZERO_CONCEPTS:
                 flags.append(f"{concept_name}_explicit_zero")
                 values = [_zero_fact(concept_name, year, retrieved_at) for year in years]
             else:
                 raise ValueError(f"unresolved_concept:{concept_name}")
+        else:
+            values = extracted.values
+            if extracted.tag != fallback_tags[0]:
+                flags.append(f"{concept_name}_fallback:{extracted.tag}")
         facts[concept_name] = values
 
     return EdgarFacts(
@@ -82,7 +108,7 @@ def _extract_concept(
     fallback_tags: list[str],
     years: list[str],
     retrieved_at: datetime,
-) -> list[Number] | None:
+) -> ExtractedConcept | None:
     for tag in fallback_tags:
         unit = "shares" if tag == "dei:EntityCommonStockSharesOutstanding" else "USD"
         rows = _tag_values(raw, tag, unit)
@@ -94,7 +120,10 @@ def _extract_concept(
         if all(year in by_year for year in years):
             number_unit = "shares" if unit == "shares" else "USD_millions"
             divisor = 1_000_000 if unit == "shares" else 1
-            return [_fact_number(by_year[year], tag, year, number_unit, divisor, retrieved_at) for year in years]
+            return ExtractedConcept(
+                values=[_fact_number(by_year[year], tag, year, number_unit, divisor, retrieved_at) for year in years],
+                tag=tag,
+            )
     return None
 
 
@@ -148,4 +177,3 @@ def _zero_fact(concept_name: str, year: str, retrieved_at: datetime) -> Number:
 
 def _load_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
-

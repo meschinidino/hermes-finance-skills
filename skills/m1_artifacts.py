@@ -16,6 +16,18 @@ class EdgarConceptSet(M1Model):
     ebit: list[Number]
     revenue: list[Number]
     cash: list[Number]
+    total_assets: list[Number]
+    current_assets: list[Number]
+    total_liabilities: list[Number]
+    current_liabilities: list[Number]
+    retained_earnings: list[Number]
+    receivables: list[Number]
+    cost_of_revenue: list[Number]
+    operating_cash_flow: list[Number]
+    net_income: list[Number]
+    depreciation_amortization: list[Number]
+    selling_general_admin: list[Number]
+    inventory: list[Number]
     long_term_debt_noncurrent: list[Number]
     long_term_debt_current: list[Number]
     short_term_borrowings: list[Number]
@@ -23,6 +35,93 @@ class EdgarConceptSet(M1Model):
     goodwill: list[Number]
     shares_outstanding: list[Number]
     interest_expense: list[Number]
+
+
+class SmokeChecks(M1Model):
+    restatement: bool
+    auditor_change: bool
+    ni_cfo_gap_widening: bool
+    dso_trend: str
+    inventory_trend: str
+
+
+class AltmanResult(M1Model):
+    variant: str
+    z: Number
+    zone: Literal["safe", "grey", "distress"]
+
+
+class BeneishResult(M1Model):
+    m: Number
+    flag: bool
+
+
+class PiotroskiResult(M1Model):
+    f: Number
+
+
+class Investability(M1Model):
+    adv_usd: Number
+    float_shares: Number
+    share_class_risk: str
+    related_party: str
+
+
+class GateCard(M1Model):
+    header: Header
+    ticker: str
+    cik: str
+    altman: AltmanResult
+    beneish: BeneishResult
+    piotroski: PiotroskiResult
+    smoke: SmokeChecks
+    investability: Investability
+    verdict: Ratifiable[Literal["PASS", "DIG", "KILL"]]
+    dig_items: list[str]
+    kill_reason: str | None = None
+
+
+class BaseRateForecast(M1Model):
+    metric: str
+    rate: Number
+    horizon: Number
+    company_size_decile: Number
+
+
+class BaseRateResult(M1Model):
+    header: Header
+    forecast: BaseRateForecast
+    reference_class: str
+    probability: Number
+    low_probability_bucket: bool
+    citation: str
+
+
+class MethodIndicator(M1Model):
+    name: str
+    value: Number | str | bool
+    source: str
+
+
+class MethodDirective(M1Model):
+    header: Header
+    ticker: str
+    asset_class: Literal["cash-generator", "cyclical", "financial", "optionality", "asset-NAV"]
+    method: Literal["DCF", "normalized_mid_cycle", "financial_model", "rNPV", "SOTP", "NAV"]
+    routing_reason: str
+    indicators: list[MethodIndicator]
+    implemented: bool
+    fallback_behavior: str
+
+    @model_validator(mode="after")
+    def validate_directive(self) -> MethodDirective:
+        if not self.indicators:
+            raise ValueError("method directive requires sourced indicators")
+        if self.asset_class == "optionality" and self.method == "DCF":
+            raise ValueError("optionality assets must not route to DCF")
+        if self.implemented and self.method != "DCF":
+            raise ValueError("M2b only implements DCF valuation")
+        return self
 
 
 class EdgarFacts(M1Model):

@@ -151,6 +151,37 @@ class SizingInputs:
     book_overlap: str
     # NO size field — size is the Senior's stamp, never the pack's output
 
+# B-5
+class BaseRateForecast:
+    metric: str
+    rate: Number
+    horizon: Number
+    company_size_decile: Number
+
+class BaseRateResult:
+    header: Header
+    forecast: BaseRateForecast
+    reference_class: str
+    probability: Number
+    low_probability_bucket: bool
+    citation: str
+
+# B-6
+class MethodIndicator:
+    name: str
+    value: Number | str | bool
+    source: str
+
+class MethodDirective:
+    header: Header
+    ticker: str
+    asset_class: Literal["cash-generator","cyclical","financial","optionality","asset-NAV"]
+    method: Literal["DCF","normalized_mid_cycle","financial_model","rNPV","SOTP","NAV"]
+    routing_reason: str
+    indicators: list[MethodIndicator]
+    implemented: bool
+    fallback_behavior: str
+
 # Final composite
 class Handoff:
     header: Header

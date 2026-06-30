@@ -6,7 +6,7 @@ from typing import Any
 from pydantic import BaseModel
 
 from skills._primitives import Number
-from skills.m1_artifacts import ExpectationsLine, Spine, ValuationRange, iter_numbers, model_to_payload
+from skills.m1_artifacts import BaseRateResult, ExpectationsLine, GateCard, MethodDirective, Spine, ValuationRange, iter_numbers, model_to_payload
 from skills.interfaces import Storage
 
 
@@ -43,6 +43,12 @@ def audit_artifact(artifact: BaseModel, *, storage: Storage | None = None, path:
         _audit_valuation_range(artifact)
     if isinstance(artifact, ExpectationsLine):
         _audit_expectations_line(artifact)
+    if isinstance(artifact, GateCard):
+        _audit_gate_card(artifact)
+    if isinstance(artifact, BaseRateResult):
+        _audit_base_rate(artifact)
+    if isinstance(artifact, MethodDirective):
+        _audit_method_directive(artifact)
     if storage and path:
         payload = model_to_payload(artifact)
         storage.put_json(path, payload)
@@ -123,3 +129,36 @@ def _audit_expectations_line(expectations: ExpectationsLine) -> None:
             raise AuditError("unexpected reverse DCF edge")
         if not result.converged and result.implied_revenue_growth is not None:
             raise AuditError("non-converged reverse DCF must not force an implied point")
+
+
+def _audit_gate_card(gate: GateCard) -> None:
+    if gate.header.produced_by != "B-4":
+        raise AuditError("gate card must be produced by B-4")
+    if not gate.altman.variant:
+        raise AuditError("gate card missing Altman variant")
+    if gate.beneish.flag and not any("Beneish" in item for item in gate.dig_items):
+        raise AuditError("lit Beneish screen must add scrutiny dig item")
+    if gate.verdict.decision is not None:
+        raise AuditError("M2b screen verdict placeholder must remain unratified")
+    if gate.kill_reason is not None:
+        raise AuditError("M2b screens must not auto-kill")
+
+
+def _audit_base_rate(result: BaseRateResult) -> None:
+    if result.header.produced_by != "B-5":
+        raise AuditError("base-rate result must be produced by B-5")
+    if not result.reference_class or not result.citation:
+        raise AuditError("base-rate result requires reference class citation")
+    if not 0 <= result.probability.value <= 1:
+        raise AuditError("base-rate probability out of bounds")
+
+
+def _audit_method_directive(directive: MethodDirective) -> None:
+    if directive.header.produced_by != "B-6":
+        raise AuditError("method directive must be produced by B-6")
+    if not directive.indicators:
+        raise AuditError("method directive requires sourced indicators")
+    if directive.asset_class == "optionality" and directive.method == "DCF":
+        raise AuditError("optionality/pre-revenue names must route away from DCF")
+    if directive.implemented != (directive.method == "DCF"):
+        raise AuditError("M2b implements only DCF valuation")
