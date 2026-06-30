@@ -1,0 +1,12 @@
+schema_version: "1.0"
+cost_of_capital:
+  erp: 0.0423
+  risk_free_fallback: 0.0418
+  credit_spread: 0.010
+tax:
+  marginal_rate: 0.25
+invested_capital:
+  excess_cash_pct: 0.02
+betas:
+  AAPL:
+    unlevered: 1.05
