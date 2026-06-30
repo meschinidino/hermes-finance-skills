@@ -25,7 +25,7 @@ Minimal happy path on one ticker: `A-1 EDGAR` → `B-1 Normalize` → `B-2 WACC/
 ### M2b — Gates & routing
 `B-4 Screens` (variant-aware), `B-5 Base-Rate`, and `B-6 Method Router`. Golden-fixture tests for each.
 **Done:** a populated Gate Card and a method directive that routes asset class to the right valuation tool, fixture-backed.
-**Spec:** pending
+**Spec:** `specs/2026-06-30-gates-and-routing/`
 **Status:** Not started.
 
 ### M3 — The Analysts + ratify wiring
