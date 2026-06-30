@@ -1,0 +1,2 @@
+{"id":"valid_aapl_moat","ticker":"AAPL","expected":"audits_and_collects"}
+{"id":"metric_only_moat","ticker":"AAPL","expected":"rejects_metric_only_durability"}

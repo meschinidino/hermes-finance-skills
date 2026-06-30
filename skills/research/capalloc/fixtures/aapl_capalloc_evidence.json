@@ -1,0 +1,32 @@
+{
+  "reinvestment_behavior": {
+    "draft": "FY2024 reinvestment appears disciplined: high returns are supported while the Senior should verify whether current R&D and platform investment are enough to sustain the ecosystem.",
+    "source_label": "AAPL FY2024 EDGAR-derived spine and expense discussion",
+    "excerpt_or_summary": "The fixture links operating profitability and reinvestment context to the filed spine and FY2024 Form 10-K discussion.",
+    "filing_reference": "AAPL FY2024 Form 10-K, operating expenses and EDGAR-derived spine inputs",
+    "period": "FY2024",
+    "tag": "us-gaap:ResearchAndDevelopmentExpense",
+    "form": "10-K",
+    "fixture_ref": "skills/research/capalloc/fixtures/aapl_capalloc_evidence.json#reinvestment_behavior"
+  },
+  "shareholder_return_behavior": {
+    "draft": "FY2024 capital returns are a central part of the capital-allocation record; the Senior should judge whether buybacks offset dilution and are made at sensible value.",
+    "source_label": "AAPL FY2024 Form 10-K shareholder return discussion",
+    "excerpt_or_summary": "The fixture identifies repurchases, dividends, and share-count context as the shareholder-return evidence set.",
+    "filing_reference": "AAPL FY2024 Form 10-K, equity and shareholder return disclosures",
+    "period": "FY2024",
+    "tag": "us-gaap:PaymentsForRepurchaseOfCommonStock",
+    "form": "10-K",
+    "fixture_ref": "skills/research/capalloc/fixtures/aapl_capalloc_evidence.json#shareholder_return_behavior"
+  },
+  "balance_sheet_discipline": {
+    "draft": "FY2024 balance-sheet discipline looks compatible with a quality compounder, but the Senior should still check debt, cash, and acquisition posture against future capital needs.",
+    "source_label": "AAPL FY2024 EDGAR-derived balance sheet facts",
+    "excerpt_or_summary": "The fixture uses EDGAR-derived cash, debt, and liability concepts to frame balance-sheet discipline.",
+    "filing_reference": "AAPL FY2024 Form 10-K, balance sheet",
+    "period": "FY2024",
+    "tag": "us-gaap:CashAndCashEquivalentsAtCarryingValue",
+    "form": "10-K",
+    "fixture_ref": "skills/research/capalloc/fixtures/aapl_capalloc_evidence.json#balance_sheet_discipline"
+  }
+}

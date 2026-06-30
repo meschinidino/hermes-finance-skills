@@ -231,6 +231,15 @@ Before landing M3.3 implementation, complete this review and flag anything waved
 
 ## Validation Result
 
-Status: planned, not implemented.
+Status: implemented and validated.
 
-Implementation validation is intentionally pending user review of this triplet.
+Validated on 2026-06-30 with:
+
+```text
+UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest tests/test_m3_3_moat_capalloc.py
+UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest skills/research/moat skills/research/capalloc
+UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync python -m resolver AAPL
+UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest
+```
+
+Result: all commands passed. Full suite result: 93 passed, 3 skipped.

@@ -1,0 +1,37 @@
+{
+  "moat_mechanism": {
+    "draft": {
+      "claim": "Apple's FY2024 ecosystem and services attachment support a switching-cost moat, but the claim depends on continued installed-base engagement rather than historical spread alone.",
+      "mechanism_category": "switching_costs",
+      "support_categories": ["forward_mechanism", "historical_economics"],
+      "mechanism_evidence": "The product and services ecosystem gives customers reasons to stay within the platform across devices, software, and services."
+    },
+    "source_label": "Apple FY2024 Form 10-K ecosystem and services discussion",
+    "excerpt_or_summary": "The fixture identifies products, operating systems, services, and accessories that work together across Apple's customer base.",
+    "filing_reference": "AAPL FY2024 Form 10-K, Item 1",
+    "period": "FY2024",
+    "tag": "us-gaap:BusinessDescription",
+    "form": "10-K",
+    "fixture_ref": "skills/research/moat/fixtures/aapl_moat_evidence.json#moat_mechanism"
+  },
+  "historical_economics": {
+    "draft": "FY2024 spread and margin evidence support the question of economic durability, but do not by themselves prove a moat.",
+    "source_label": "AAPL filed spine artifact",
+    "excerpt_or_summary": "The spine carries FY2024 ROIC, WACC, spread, NOPAT margin, and capital-turnover evidence from EDGAR-derived facts.",
+    "filing_reference": "AAPL FY2024 Form 10-K, EDGAR-derived spine inputs",
+    "period": "FY2024",
+    "tag": "computed:spread",
+    "form": "10-K",
+    "fixture_ref": "skills/research/moat/fixtures/aapl_moat_evidence.json#historical_economics"
+  },
+  "durability_risk": {
+    "draft": "The main durability risk is that product-cycle concentration or platform substitution could weaken engagement before historical economics visibly deteriorate.",
+    "source_label": "Apple FY2024 Form 10-K product and competition risks",
+    "excerpt_or_summary": "The fixture flags dependence on major product families and highly competitive markets as disconfirming evidence for moat strength.",
+    "filing_reference": "AAPL FY2024 Form 10-K, risk factors",
+    "period": "FY2024",
+    "tag": "us-gaap:RiskFactors",
+    "form": "10-K",
+    "fixture_ref": "skills/research/moat/fixtures/aapl_moat_evidence.json#durability_risk"
+  }
+}

@@ -23,6 +23,7 @@ class EvidenceRef(M3Model):
     artifact_path: str | None = None
     filing_reference: str | None = None
     external_source_ref: str | None = None
+    claimed_period: str | None = None
     provenance: Provenance | None = None
 
     @property
