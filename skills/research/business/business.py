@@ -8,7 +8,7 @@ from typing import Literal
 from pydantic import model_validator
 
 from skills._primitives import Header
-from skills.m1_artifacts import EdgarFacts
+from skills.accountant_artifacts import EdgarFacts
 from skills.analyst_artifacts import AnalystDraft, EvidenceRef, M3Model
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"

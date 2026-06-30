@@ -6,7 +6,7 @@ from typing import Literal
 
 from skills._primitives import Header, Number, Provenance, Ratifiable
 from skills.config import Config
-from skills.m1_artifacts import (
+from skills.accountant_artifacts import (
     CostOfCapitalInputs,
     DcfAssumption,
     EdgarFacts,

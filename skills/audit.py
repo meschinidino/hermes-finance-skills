@@ -7,7 +7,7 @@ from typing import Any
 from pydantic import BaseModel
 
 from skills._primitives import Number
-from skills.m1_artifacts import BaseRateResult, ExpectationsLine, GateCard, MethodDirective, Spine, ValuationRange, iter_numbers, model_to_payload
+from skills.accountant_artifacts import BaseRateResult, ExpectationsLine, GateCard, MethodDirective, Spine, ValuationRange, iter_numbers, model_to_payload
 from skills.analyst_artifacts import AnalystDraft, EvidenceRef, ReviewItem, SeniorDecisionPackage, SeniorReviewPackage, m3_model_to_payload
 from skills.interfaces import Storage
 

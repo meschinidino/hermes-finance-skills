@@ -5,7 +5,7 @@ import re
 
 from skills._primitives import Header, Number, Provenance
 from skills.config import Config
-from skills.m1_artifacts import EdgarFacts, MethodDirective, MethodIndicator, NormalizedFinancials
+from skills.accountant_artifacts import EdgarFacts, MethodDirective, MethodIndicator, NormalizedFinancials
 
 
 def route_method(

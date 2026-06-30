@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from skills._primitives import Header, Number, Provenance
-from skills.m1_artifacts import CostOfCapitalInputs, NormalizedFinancials, PriceResult, Spine
+from skills.accountant_artifacts import CostOfCapitalInputs, NormalizedFinancials, PriceResult, Spine
 
 
 def build_spine(

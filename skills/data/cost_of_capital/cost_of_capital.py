@@ -9,7 +9,7 @@ from typing import Protocol
 
 from skills.config import Config
 from skills._primitives import Number, Provenance
-from skills.m1_artifacts import CostOfCapitalInputs, EdgarFacts, PriceResult, make_external_number
+from skills.accountant_artifacts import CostOfCapitalInputs, EdgarFacts, PriceResult, make_external_number
 
 FIXTURE_PATH = Path(__file__).parents[3] / "tests" / "fixtures" / "fred_dgs10.json"
 

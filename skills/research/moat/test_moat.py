@@ -9,7 +9,7 @@ from skills.config import load_config
 from skills.data.cost_of_capital.cost_of_capital import build_cost_of_capital_inputs
 from skills.data.edgar.edgar import fetch_edgar_facts
 from skills.data.price.price import fetch_price
-from skills.m1_artifacts import model_to_payload
+from skills.accountant_artifacts import model_to_payload
 from skills.research.moat.moat import build_moat_artifact
 from skills.storage import LocalStorage
 from skills.valuation.normalize.normalize import normalize_financials

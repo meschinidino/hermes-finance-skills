@@ -8,7 +8,7 @@ from typing import Any
 from pydantic import model_validator
 
 from skills._primitives import Header, Provenance
-from skills.m1_artifacts import EdgarFacts, Spine
+from skills.accountant_artifacts import EdgarFacts, Spine
 from skills.analyst_artifacts import AnalystDraft, EvidenceRef, M3Model
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"

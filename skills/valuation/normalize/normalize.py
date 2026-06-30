@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from skills.m1_artifacts import EdgarFacts, NormalizedFinancials
+from skills.accountant_artifacts import EdgarFacts, NormalizedFinancials
 
 
 def normalize_financials(edgar_facts: EdgarFacts) -> NormalizedFinancials:

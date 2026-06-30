@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from skills._primitives import Header, Number, Provenance
-from skills.m1_artifacts import BaseRateForecast, BaseRateResult
+from skills.accountant_artifacts import BaseRateForecast, BaseRateResult
 
 
 @dataclass(frozen=True)

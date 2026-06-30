@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime, timezone
 
 from skills._primitives import Header, Number
-from skills.m1_artifacts import BareHandoff, Spine
+from skills.accountant_artifacts import BareHandoff, Spine
 
 
 def build_handoff(

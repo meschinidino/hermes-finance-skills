@@ -5,7 +5,7 @@ from datetime import date
 import resolver
 from skills.config import load_config
 from skills.data.edgar.edgar import fetch_edgar_facts
-from skills.m1_artifacts import model_to_payload
+from skills.accountant_artifacts import model_to_payload
 from skills.storage import LocalStorage
 from skills.valuation.method_router.method_router import route_method
 from skills.valuation.normalize.normalize import normalize_financials

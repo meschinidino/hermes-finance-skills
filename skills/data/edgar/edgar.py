@@ -7,7 +7,7 @@ from typing import Any
 from dataclasses import dataclass
 
 from skills._primitives import Number, Provenance
-from skills.m1_artifacts import EdgarConceptSet, EdgarFacts
+from skills.accountant_artifacts import EdgarConceptSet, EdgarFacts
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
 

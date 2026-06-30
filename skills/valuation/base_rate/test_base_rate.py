@@ -6,7 +6,7 @@ import pytest
 
 from skills._primitives import Number, Provenance
 from skills.audit import audit_artifact
-from skills.m1_artifacts import BaseRateForecast
+from skills.accountant_artifacts import BaseRateForecast
 from skills.valuation.base_rate.base_rate import lookup_base_rate
 
 

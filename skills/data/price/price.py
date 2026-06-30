@@ -6,7 +6,7 @@ from pathlib import Path
 
 from skills.interfaces import PriceFeed
 from skills._primitives import Number, Provenance
-from skills.m1_artifacts import EdgarFacts, PriceResult, make_external_number
+from skills.accountant_artifacts import EdgarFacts, PriceResult, make_external_number
 
 FIXTURE_PATH = Path(__file__).parents[3] / "tests" / "fixtures" / "aapl_price.json"
 DEFAULT_FIXTURE_PRICES = {"AAPL": 200.0}
