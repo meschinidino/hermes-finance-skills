@@ -14,7 +14,7 @@ Read these first before planning changes:
 
 M0 is complete: scaffold, pydantic primitives/config, injected interfaces, local storage, and stub resolver.
 
-M1 is the next implementation slice. Do not start EDGAR/WACC work unless explicitly asked. M1 must build the walking skeleton only: EDGAR → Normalize → Spine → bare Handoff.
+For the current implementation slice, defer to `specs/roadmap.md`; do not rely on stale milestone notes in this file.
 
 ## Repository Layout
 
