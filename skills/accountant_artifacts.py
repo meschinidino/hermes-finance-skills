@@ -5,7 +5,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from skills._primitives import Header, Number, Provenance, Ratifiable, StrictModel, to_jsonable
+from skills._primitives import Header, Number, Provenance, Ratifiable, StrictModel
 
 
 class M1Model(BaseModel):
@@ -302,13 +302,6 @@ class BareHandoff(M1Model):
         if self.status != "m1_walking_skeleton":
             raise ValueError("handoff must be marked as M1 walking skeleton")
         return self
-
-
-def model_to_payload(model: BaseModel) -> dict[str, Any]:
-    payload = to_jsonable(model)
-    if not isinstance(payload, dict):
-        raise TypeError("expected model to serialize to object")
-    return payload
 
 
 def iter_numbers(value: Any) -> list[Number]:

@@ -12,8 +12,9 @@ from skills.data.cost_of_capital.cost_of_capital import build_cost_of_capital_in
 from skills.data.edgar.edgar import fetch_edgar_facts
 from skills.data.price.price import fetch_price
 from skills.interfaces import LLM, PriceFeed, Senior, Storage
-from skills.accountant_artifacts import EdgarFacts, model_to_payload
-from skills.analyst_artifacts import collect_ratifiables, m3_model_to_payload
+from skills.accountant_artifacts import EdgarFacts
+from skills.analyst_artifacts import collect_ratifiables
+from skills.serialization import artifact_model_to_payload
 from skills.research.business.business import BusinessArtifact, EarlyGateResult, StopArtifact, build_business_artifact
 from skills.research.capalloc.capalloc import build_capalloc_artifact
 from skills.research.moat.moat import build_moat_artifact
@@ -75,7 +76,7 @@ def analyze(
     )
 
     run_dir = f"runs/{normalized_ticker}/{run_date.isoformat()}"
-    spine_payload = model_to_payload(spine)
+    spine_payload = artifact_model_to_payload(spine)
     active_storage.put_json(f"{run_dir}/spine.json", spine_payload)
     if active_storage.get_json(f"{run_dir}/spine.json") != spine_payload:
         raise RuntimeError("spine storage round-trip failed")
@@ -247,7 +248,7 @@ def _run_business_early_gate(
             "ticker": ticker,
             "as_of": as_of.isoformat(),
             "business_artifact_path": business_path,
-            "business_artifact": m3_model_to_payload(business),
+            "business_artifact": artifact_model_to_payload(business),
         }
     )
     decision = str(gate_response.get("decision", "")).upper()
@@ -278,7 +279,7 @@ def _declared_family(adapter: Any) -> str | None:
 
 
 def _put_m3_roundtrip(storage: Storage, path: str, artifact) -> None:
-    payload = m3_model_to_payload(artifact)
+    payload = artifact_model_to_payload(artifact)
     storage.put_json(path, payload)
     if storage.get_json(path) != payload:
         raise RuntimeError(f"storage round-trip failed: {path}")

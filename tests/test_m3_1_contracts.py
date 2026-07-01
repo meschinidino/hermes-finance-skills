@@ -19,8 +19,8 @@ from skills.analyst_artifacts import (
     SeniorDecisionPackage,
     SeniorReviewPackage,
     collect_ratifiables,
-    m3_model_to_payload,
 )
+from skills.serialization import artifact_model_to_payload
 from skills.storage import LocalStorage
 from tests.m3_fakes import FakeLLM, FakeSenior
 
@@ -208,7 +208,7 @@ def test_ratified_state_is_derived_and_not_serialized() -> None:
     assert "ratified" not in SeniorReviewPackage.model_fields
     assert "ratified" not in SeniorDecisionPackage.model_fields
     assert package.is_ratified is False
-    payload = m3_model_to_payload(package)
+    payload = artifact_model_to_payload(package)
     assert "ratified" not in payload
     assert "is_ratified" not in payload
 
@@ -226,7 +226,7 @@ def test_complete_senior_decision_package_accepted() -> None:
     )
 
     assert decisions.is_complete is True
-    payload = m3_model_to_payload(decisions)
+    payload = artifact_model_to_payload(decisions)
     assert "ratified" not in payload
     assert "is_complete" not in payload
 
@@ -251,8 +251,8 @@ def test_full_offline_construct_audit_store_collect_path_is_deterministic(tmp_pa
     artifact = sample_artifact()
 
     audit_analyst_artifact(artifact)
-    storage.put_json("runs/AAPL/2026-06-30/m3_sample.json", m3_model_to_payload(artifact))
-    assert storage.get_json("runs/AAPL/2026-06-30/m3_sample.json") == m3_model_to_payload(artifact)
+    storage.put_json("runs/AAPL/2026-06-30/m3_sample.json", artifact_model_to_payload(artifact))
+    assert storage.get_json("runs/AAPL/2026-06-30/m3_sample.json") == artifact_model_to_payload(artifact)
 
     package_a = collect_ratifiables(artifact, ticker="AAPL", as_of=date(2026, 6, 30), header=header("M3.1"))
     package_b = collect_ratifiables(artifact, ticker="AAPL", as_of=date(2026, 6, 30), header=header("M3.1"))
@@ -260,7 +260,7 @@ def test_full_offline_construct_audit_store_collect_path_is_deterministic(tmp_pa
 
     assert llm is not senior
     assert not any("llm" in name.lower() for name in vars(senior))
-    assert m3_model_to_payload(package_a) == m3_model_to_payload(package_b)
+    assert artifact_model_to_payload(package_a) == artifact_model_to_payload(package_b)
     assert llm.complete("draft", context={"ticker": "AAPL"}) == llm.complete("draft", context={"ticker": "AAPL"})
     assert senior.ratify({"required_item_ids": [item.id for item in package_a.review_items]}) == senior.ratify(
         {"required_item_ids": [item.id for item in package_a.review_items]}

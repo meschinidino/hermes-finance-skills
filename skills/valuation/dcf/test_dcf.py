@@ -7,7 +7,7 @@ from skills.config import load_config
 from skills.data.cost_of_capital.cost_of_capital import build_cost_of_capital_inputs
 from skills.data.edgar.edgar import fetch_edgar_facts
 from skills.data.price.price import fetch_price
-from skills.accountant_artifacts import model_to_payload
+from skills.serialization import artifact_model_to_payload
 from skills.valuation.dcf.dcf import build_dcf_artifacts, build_reverse_expectations
 from skills.valuation.normalize.normalize import normalize_financials
 
@@ -84,8 +84,8 @@ def test_reverse_dcf_blocks_without_observed_price_but_forward_still_files() -> 
 def test_dcf_artifacts_serialize_without_losing_provenance() -> None:
     config, edgar, price, coc, normalized = _fixture_path()
     valuation, expectations = build_dcf_artifacts(normalized, edgar, price, coc, config)
-    valuation_payload = model_to_payload(valuation)
-    expectations_payload = model_to_payload(expectations)
+    valuation_payload = artifact_model_to_payload(valuation)
+    expectations_payload = artifact_model_to_payload(expectations)
 
     assert valuation_payload["scenarios"][1]["value"]["provenance"]["tag"] == "computed:dcf_value_per_share"
     assert expectations_payload["wacc_band"]["low"]["provenance"]["tag"] == "computed:wacc_low"

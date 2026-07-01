@@ -7,7 +7,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
-from skills._primitives import Header, Provenance, to_jsonable
+from skills._primitives import Header, Provenance
 
 
 class M3Model(BaseModel):
@@ -153,13 +153,6 @@ def collect_ratifiables(
         review_items=items,
         source_artifact_summary={artifact_name: artifact.__class__.__name__},
     )
-
-
-def m3_model_to_payload(model: BaseModel) -> dict[str, Any]:
-    payload = to_jsonable(model)
-    if not isinstance(payload, dict):
-        raise TypeError("expected model to serialize to object")
-    return payload
 
 
 def _iter_analyst_drafts(value: Any, path: str) -> list[tuple[str, AnalystDraft]]:

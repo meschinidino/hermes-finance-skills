@@ -7,9 +7,10 @@ from typing import Any
 from pydantic import BaseModel
 
 from skills._primitives import Number
-from skills.accountant_artifacts import BaseRateResult, ExpectationsLine, GateCard, MethodDirective, Spine, ValuationRange, iter_numbers, model_to_payload
-from skills.analyst_artifacts import AnalystDraft, EvidenceRef, ReviewItem, SeniorDecisionPackage, SeniorReviewPackage, m3_model_to_payload
+from skills.accountant_artifacts import BaseRateResult, ExpectationsLine, GateCard, MethodDirective, Spine, ValuationRange, iter_numbers
+from skills.analyst_artifacts import AnalystDraft, EvidenceRef, ReviewItem, SeniorDecisionPackage, SeniorReviewPackage
 from skills.interfaces import Storage
+from skills.serialization import artifact_model_to_payload
 
 
 class AuditError(ValueError):
@@ -28,7 +29,7 @@ def audit_m1_handoff(handoff: BaseModel, *, storage: Storage | None = None, path
     _audit_spine(spine)
 
     if storage and path:
-        payload = model_to_payload(handoff)
+        payload = artifact_model_to_payload(handoff)
         storage.put_json(path, payload)
         reloaded = storage.get_json(path)
         if reloaded != payload:
@@ -52,7 +53,7 @@ def audit_artifact(artifact: BaseModel, *, storage: Storage | None = None, path:
     if isinstance(artifact, MethodDirective):
         _audit_method_directive(artifact)
     if storage and path:
-        payload = model_to_payload(artifact)
+        payload = artifact_model_to_payload(artifact)
         storage.put_json(path, payload)
         if storage.get_json(path) != payload:
             raise AuditError("storage round-trip failed")
@@ -70,7 +71,7 @@ def audit_analyst_artifact(artifact: BaseModel, *, storage: Storage | None = Non
     for number in iter_numbers(artifact):
         _audit_number(number, require_input_refs=True)
     if storage and path:
-        payload = m3_model_to_payload(artifact)
+        payload = artifact_model_to_payload(artifact)
         storage.put_json(path, payload)
         if storage.get_json(path) != payload:
             raise AuditError("storage round-trip failed")
@@ -82,7 +83,7 @@ def audit_senior_review_package(package: SeniorReviewPackage, *, storage: Storag
     for item in package.review_items:
         _audit_review_item(item)
     if storage and path:
-        payload = m3_model_to_payload(package)
+        payload = artifact_model_to_payload(package)
         storage.put_json(path, payload)
         if storage.get_json(path) != payload:
             raise AuditError("storage round-trip failed")
@@ -94,7 +95,7 @@ def audit_senior_decision_package(package: SeniorDecisionPackage, *, storage: St
     for item_id, decision in package.decisions.items():
         _audit_no_bare_numeric_payload(decision.final, f"decisions.{item_id}.final")
     if storage and path:
-        payload = m3_model_to_payload(package)
+        payload = artifact_model_to_payload(package)
         storage.put_json(path, payload)
         if storage.get_json(path) != payload:
             raise AuditError("storage round-trip failed")
