@@ -49,6 +49,8 @@ Typed M3 artifacts, ratifiable collection, Analyst audit checks, deterministic f
 ### M3.4 — Scenarios
 `C-4 Scenarios` Analyst bundle. Builds bear/base/bull draft assumptions from the existing artifacts, checks base rates, and respects the Method Router.
 **Done:** scenario assumptions are driver-tied and base-rate checked; probabilities remain Senior-owned ratifiables; optionality/pre-revenue names are not forced into plain DCF.
+**Spec:** `specs/2026-06-30-m3-4-scenarios/`
+**Status:** M3.4 complete (fixture-backed C-4 Scenarios Analyst bundle, per-scenario probability ratifiables, filed-artifact driver binding, resolved B-5/B-6 audits, and non-DCF method-deferred path). Validated with `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest`, `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest skills/research/scenarios`, and `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync python -m resolver AAPL`.
 
 ### M3.5 — Edge & cruxes
 `C-5 Edge & Cruxes` Analyst bundle with the steelman, counterparty, structural mispricing, catalysts, and exactly three falsifiable cruxes.

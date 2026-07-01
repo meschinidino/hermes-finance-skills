@@ -14,10 +14,11 @@ from skills.data.price.price import fetch_price
 from skills.interfaces import LLM, PriceFeed, Senior, Storage
 from skills.accountant_artifacts import EdgarFacts
 from skills.analyst_artifacts import collect_ratifiables
-from skills.serialization import artifact_model_to_payload
 from skills.research.business.business import BusinessArtifact, EarlyGateResult, StopArtifact, build_business_artifact
 from skills.research.capalloc.capalloc import build_capalloc_artifact
 from skills.research.moat.moat import build_moat_artifact
+from skills.research.scenarios.scenarios import audit_scenario_set, build_scenario_set_artifact
+from skills.serialization import artifact_model_to_payload
 from skills.storage import LocalStorage
 from skills.synthesis.handoff.handoff import build_handoff
 from skills.valuation.dcf.dcf import build_dcf_artifacts
@@ -186,6 +187,30 @@ def analyze(
         audit_artifact(valuation_range, storage=active_storage, path=f"{run_dir}/valuation_range.json")
         audit_artifact(expectations_line, storage=active_storage, path=f"{run_dir}/expectations_line.json")
 
+    scenario_path = f"{run_dir}/scenarios.json"
+    valuation_range_path = f"{run_dir}/valuation_range.json" if method_directive.method == "DCF" else None
+    expectations_line_path = f"{run_dir}/expectations_line.json" if method_directive.method == "DCF" else None
+    scenarios = build_scenario_set_artifact(
+        ticker=normalized_ticker,
+        as_of=run_date,
+        schema_version=config.schema_version,
+        storage=active_storage,
+        run_dir=run_dir,
+        method_directive_path=f"{run_dir}/method_directive.json",
+        valuation_range_path=valuation_range_path,
+        expectations_line_path=expectations_line_path,
+    )
+    audit_scenario_set(scenarios, storage=active_storage)
+    _put_m3_roundtrip(active_storage, scenario_path, scenarios)
+    scenario_review = collect_ratifiables(
+        scenarios,
+        ticker=normalized_ticker,
+        as_of=run_date,
+        header=_header(config.schema_version, "C-4-review"),
+        source_artifact=scenario_path,
+    )
+    audit_senior_review_package(scenario_review, storage=active_storage, path=f"{run_dir}/scenarios_review_package.json")
+
     payload = active_storage.get_json(handoff_path)
     payload["business"] = active_storage.get_json(business_path)
     payload["early_gate"] = active_storage.get_json(f"{run_dir}/business_early_gate.json")
@@ -195,6 +220,8 @@ def analyze(
     payload["capalloc_review_package"] = active_storage.get_json(f"{run_dir}/capalloc_review_package.json")
     payload["gate_card"] = active_storage.get_json(f"{run_dir}/gate_card.json")
     payload["method_directive"] = active_storage.get_json(f"{run_dir}/method_directive.json")
+    payload["scenarios"] = active_storage.get_json(scenario_path)
+    payload["scenarios_review_package"] = active_storage.get_json(f"{run_dir}/scenarios_review_package.json")
     if method_directive.method != "DCF":
         payload["valuation_deferred"] = method_directive.fallback_behavior
         return payload
@@ -239,6 +266,8 @@ def _run_business_early_gate(
     senior_family = _declared_family(senior)
     if not analyst_family or not senior_family:
         raise GateWiringError("analyst and senior adapters must declare model families")
+    # Offline defaults compare placeholder labels ("offline-business-drafter" vs
+    # "offline-senior"); live wiring must still provide real model-family labels.
     if analyst_family == senior_family:
         raise GateWiringError(f"analyst and senior model families must differ: {analyst_family}")
 
