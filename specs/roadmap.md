@@ -61,6 +61,8 @@ Typed M3 artifacts, ratifiable collection, Analyst audit checks, deterministic f
 ### M3.6 — Risk
 `C-6 Risk` Analyst bundle. Produces pre-mortem, short-seller bear case, two-bucket risk register, bear-case value, and kill metric.
 **Done:** risk drafts include non-empty tail risks, a falsifiable kill metric, and ratifiable risk completeness.
+**Spec:** `specs/2026-07-01-m3-6-risk/`
+**Status:** Spec drafted; implementation not started.
 
 ### M3.7 — Ratify aggregation
 Collect M2b and M3 ratifiables into one `SeniorReviewPackage`, call `Senior.ratify` once, and persist the Senior decision package for M4 synthesis.
