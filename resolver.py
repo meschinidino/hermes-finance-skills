@@ -18,6 +18,7 @@ from skills.research.business.business import BusinessArtifact, EarlyGateResult,
 from skills.research.capalloc.capalloc import build_capalloc_artifact
 from skills.research.edge_cruxes.edge_cruxes import audit_edge_cruxes, build_edge_cruxes_artifact
 from skills.research.moat.moat import build_moat_artifact
+from skills.research.risk.risk import audit_risk_artifact, build_risk_artifact
 from skills.research.scenarios.scenarios import audit_scenario_set, build_scenario_set_artifact
 from skills.serialization import artifact_model_to_payload
 from skills.storage import LocalStorage
@@ -239,6 +240,35 @@ def analyze(
     )
     audit_senior_review_package(edge_cruxes_review, storage=active_storage, path=f"{run_dir}/edge_cruxes_review_package.json")
 
+    if method_directive.method == "DCF":
+        risk_path = f"{run_dir}/risk.json"
+        risk = build_risk_artifact(
+            ticker=normalized_ticker,
+            as_of=run_date,
+            schema_version=config.schema_version,
+            storage=active_storage,
+            run_dir=run_dir,
+            business_path=business_path,
+            moat_path=moat_path,
+            capalloc_path=capalloc_path,
+            scenarios_path=scenario_path,
+            edge_cruxes_path=edge_cruxes_path,
+            gate_card_path=f"{run_dir}/gate_card.json",
+            method_directive_path=f"{run_dir}/method_directive.json",
+            spine_path=f"{run_dir}/spine.json",
+            valuation_range_path=valuation_range_path,
+            expectations_line_path=expectations_line_path,
+        )
+        audit_risk_artifact(risk, storage=active_storage, path=risk_path)
+        risk_review = collect_ratifiables(
+            risk,
+            ticker=normalized_ticker,
+            as_of=run_date,
+            header=_header(config.schema_version, "C-6-review"),
+            source_artifact=risk_path,
+        )
+        audit_senior_review_package(risk_review, storage=active_storage, path=f"{run_dir}/risk_review_package.json")
+
     payload = active_storage.get_json(handoff_path)
     payload["business"] = active_storage.get_json(business_path)
     payload["early_gate"] = active_storage.get_json(f"{run_dir}/business_early_gate.json")
@@ -254,7 +284,10 @@ def analyze(
     payload["edge_cruxes_review_package"] = active_storage.get_json(f"{run_dir}/edge_cruxes_review_package.json")
     if method_directive.method != "DCF":
         payload["valuation_deferred"] = method_directive.fallback_behavior
+        payload["risk_deferred"] = "C-6 Risk requires a filed valuation or scenario bear-case value for this route."
         return payload
+    payload["risk"] = active_storage.get_json(f"{run_dir}/risk.json")
+    payload["risk_review_package"] = active_storage.get_json(f"{run_dir}/risk_review_package.json")
     payload["valuation_range"] = active_storage.get_json(f"{run_dir}/valuation_range.json")
     payload["expectations_line"] = active_storage.get_json(f"{run_dir}/expectations_line.json")
 

@@ -232,6 +232,16 @@ M3.6 can be marked complete in `specs/roadmap.md` only after:
 - full offline pytest passes;
 - `python -m resolver AAPL` passes in the offline fake configuration.
 
+Partial validation previously run on 2026-07-01:
+
+```text
+UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest skills/research/risk
+UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest
+UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync python -m resolver AAPL
+```
+
+Result: implementation exists, but M3.6 is not closed until domain-invariant review gaps are resolved.
+
 ## Pre-Landing Self-Review
 
 Before landing implementation, explicitly answer:

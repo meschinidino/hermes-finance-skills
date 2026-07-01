@@ -2,7 +2,7 @@
 
 ## Functional Requirements
 
-1. M3.6 must add a `C-6 Risk` Analyst bundle in the future implementation.
+1. M3.6 must add a `C-6 Risk` Analyst bundle.
 2. The bundle must live under `skills/research/risk/`.
 3. The bundle must be deterministic and offline in M3.6.
 4. The bundle must not call a live LLM.

@@ -1,0 +1,70 @@
+{
+  "premortem": {
+    "draft": "Over the next two fiscal years the investment loses money if services growth slows while hardware replacement cycles remain soft, causing the market to compress the multiple before buybacks can offset lower operating expectations.",
+    "source_label": "C-4 scenarios and C-5 edge cruxes",
+    "excerpt_or_summary": "Scenario and edge-crux artifacts identify services growth, hardware cyclicality, and buyback support as thesis drivers.",
+    "source_key": "edge_cruxes"
+  },
+  "bear_case_narrative": {
+    "draft": "A credible short seller's bear case is that AAPL's installed-base monetization is mature: because services growth slows and hardware cycles stay elongated, margin resilience becomes harder to sustain, the buyback is seen as masking stagnation, and downside can persist across several periods as estimates reset.",
+    "source_label": "C-4 scenarios and B-3 valuation",
+    "excerpt_or_summary": "The filed bear scenario and valuation range quantify downside tied to revenue growth and margin assumptions.",
+    "source_key": "scenarios"
+  },
+  "modellable_risks": [
+    {
+      "risk": "Services revenue growth decelerates below the filed bear scenario path.",
+      "impact": "high",
+      "likelihood": "med",
+      "modeled_effect": "Lower revenue growth and margin mix pressure flow through the DCF bear case value.",
+      "source_label": "C-4 scenarios",
+      "excerpt_or_summary": "The scenario artifact binds the bear case to revenue-growth assumptions and base-rate anchors.",
+      "source_key": "scenarios"
+    },
+    {
+      "risk": "Buybacks become less accretive because net cash declines while operating growth slows.",
+      "impact": "med",
+      "likelihood": "med",
+      "modeled_effect": "Per-share value support weakens and the capital-allocation crux requires a lower conviction score.",
+      "source_label": "C-3 capital allocation",
+      "excerpt_or_summary": "Capital allocation and edge-crux artifacts make diluted shares and net cash a thesis monitor.",
+      "source_key": "capalloc"
+    }
+  ],
+  "tail_risks": [
+    {
+      "risk": "A platform-regulation or app-store remedy structurally changes services economics.",
+      "why_not_modelled": "The timing, legal remedy, and economics are discontinuous rather than responsibly estimable with an impact-times-likelihood score.",
+      "monitoring_signal": "Major jurisdiction ruling or settlement that directly changes app-store pricing, distribution, or payment rules.",
+      "source_label": "C-2 moat and C-5 edge cruxes",
+      "excerpt_or_summary": "Moat and edge artifacts frame services economics as a durability mechanism whose regime risk is not captured by normal scenarios.",
+      "source_key": "moat"
+    }
+  ],
+  "kill_metric": {
+    "metric": "services_revenue_growth",
+    "threshold_direction": "below",
+    "threshold_value": 0.02,
+    "threshold_unit": "ratio",
+    "threshold_period": "FY2027",
+    "check_by": "2027-12-31",
+    "thesis_action": "Force Senior re-underwrite of the services durability crux and move the thesis to pass unless another audited driver offsets the break.",
+    "source_label": "C-5 edge cruxes",
+    "excerpt_or_summary": "The services growth crux is the central falsifiable monitor for the variant view.",
+    "source_key": "edge_cruxes"
+  },
+  "risk_completeness": {
+    "draft": "The sheet is decision-ready for M3.6 because the main downside path, bear value, modelled risks, and tail bucket are tied to filed artifacts. Could not verify live regulatory probability or current-quarter services trend beyond the offline fixtures. A new filing that would raise confidence is stable services growth with margin resilience; a filing that would lower confidence is services growth below the kill metric.",
+    "source_label": "C-6 source stack",
+    "excerpt_or_summary": "Filed artifacts provide enough evidence for an undecided Senior review package while preserving explicit gaps.",
+    "source_key": "edge_cruxes"
+  },
+  "source_evidence_summary": {
+    "business": "Business artifact frames installed-base and ecosystem monetization exposure.",
+    "moat": "Moat artifact supplies the durability mechanism and related tail-risk context.",
+    "capalloc": "Capital allocation artifact supplies buyback and balance-sheet monitoring context.",
+    "scenarios": "Scenario artifact supplies filed bear/base/bull paths and bear value.",
+    "edge_cruxes": "Edge & Cruxes artifact supplies falsifiable thesis monitors.",
+    "mechanical": "Gate card, method directive, valuation range, expectations line, and spine provide mechanical downside context."
+  }
+}

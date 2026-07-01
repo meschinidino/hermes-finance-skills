@@ -2,13 +2,13 @@
 
 ## Objective
 
-Plan the `C-6 Risk` Analyst slice as a full M3.6 implementation target, without implementing it in this docs-only step.
+Implement the `C-6 Risk` Analyst slice as the full M3.6 implementation target.
 
 M3.6 must produce an evidence-backed Risk & Kill Sheet draft that states how the thesis loses money, writes the bear case as a credible skeptic would, separates modellable risks from tail risks, carries a sourced bear-case value, and defines a falsifiable kill metric. Every judgment remains an Analyst draft that requires Senior ratification. The Senior does not decide in M3.6.
 
 ## Scope
 
-In scope for the future implementation:
+In scope for the implementation:
 
 - A `C-6 Risk` Analyst bundle under `skills/research/risk/`.
 - Deterministic offline drafting from existing filed artifacts and frozen fixtures.
@@ -141,7 +141,7 @@ KillMetricDraft
 |-- metric
 |-- threshold_direction
 |-- threshold_value
-|-- observation_window
+|-- check_by
 |-- thesis_action
 |-- evidence_refs
 ```
@@ -166,7 +166,7 @@ M3.6 must add deterministic audit behavior for risk artifacts. Required brakes:
 6. Modellable risk structure. Every modellable risk must include risk, impact, likelihood, modeled effect, and evidence.
 7. Tail-risk structure. Tail risks must be non-empty and must include why the risk is not responsibly modelled.
 8. Bear-case value. The value must be a `Number`, must be finite, must use compatible units, and must trace to scenario or valuation inputs.
-9. Kill metric. The kill metric must include metric, threshold direction, threshold value, observation window, and thesis action.
+9. Kill metric. The kill metric must include metric, threshold direction, threshold value, check-by date, and thesis action.
 10. No keyword falsifiability. Audit must not accept kill metrics because prose contains words such as "if" or "below"; typed fields are the guarantee.
 11. Source binding. Risk claims must cite filed artifacts, filing refs, external refs, or explicit missing-data gaps.
 12. Review collection. The artifact must collect into stable `ReviewItem`s without calling `Senior.ratify`.
@@ -184,7 +184,7 @@ M3.6 must add deterministic audit behavior for risk artifacts. Required brakes:
 8. Prove missing tail risks fail closed.
 9. Prove blended or duplicate risks across buckets fail closed.
 10. Prove unsupported bear-case narratives fail closed.
-11. Prove kill metrics missing metric, threshold direction, threshold value, observation window, or thesis action fail closed.
+11. Prove kill metrics missing metric, threshold direction, threshold value, check-by date, or thesis action fail closed.
 12. Prove `collect_ratifiables` emits stable review items for Risk drafts.
 13. Wire the resolver GO branch after Edge & Cruxes to file and collect Risk without calling `Senior.ratify`.
 14. Keep all tests offline, deterministic, and no-network.
@@ -194,13 +194,13 @@ M3.6 must add deterministic audit behavior for risk artifacts. Required brakes:
 - The highest-risk issue is letting a generic risk list substitute for a real bear thesis. M3.6 must force the Analyst to state how money is lost.
 - Tail risks are intentionally not scored with likelihood. Mixing them into the matrix defeats the runbook's matrix fix.
 - Bear-case value must be numeric and auditable, but the story behind it is judgment and remains ratifiable.
-- Kill metrics must be structurally checkable. Prose can explain the line, but cannot substitute for metric, direction, threshold, and observation window.
+- Kill metrics must be structurally checkable. Prose can explain the line, but cannot substitute for metric, direction, threshold, and check-by date.
 - M3.6 should not create a final action such as exit or sell. It only drafts what would end the thesis for Senior ratification.
 - If existing M3.1 collection cannot represent the chosen draft granularity, implementation must stop and flag the contract gap rather than creating a parallel ratification path.
 
 ## Expected Result
 
-After future M3.6 implementation, offline `analyze("AAPL")` with the existing fake Senior/LLM seams can:
+After M3.6 implementation, offline `analyze("AAPL")` with the existing fake Senior/LLM seams can:
 
 - produce a filed, evidence-backed Risk & Kill Sheet artifact;
 - collect risk drafts as undecided review items;
