@@ -55,6 +55,8 @@ Typed M3 artifacts, ratifiable collection, Analyst audit checks, deterministic f
 ### M3.5 — Edge & cruxes
 `C-5 Edge & Cruxes` Analyst bundle with the steelman, counterparty, structural mispricing, catalysts, and exactly three falsifiable cruxes.
 **Done:** edge drafts reject trivial counterparties, include a no-trade steelman, and emit exactly three measurable cruxes.
+**Spec:** `specs/2026-07-01-m3-5-edge-cruxes/`
+**Status:** M3.5 complete (fixture-backed C-5 Edge & Cruxes Analyst bundle, no-trade steelman, non-trivial counterparty, structural-mispricing and variant-view brakes, concrete catalysts, exactly three field-falsifiable cruxes, and undecided review package collection). Validated with `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest`, `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest skills/research/edge_cruxes`, and `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync python -m resolver AAPL`.
 
 ### M3.6 — Risk
 `C-6 Risk` Analyst bundle. Produces pre-mortem, short-seller bear case, two-bucket risk register, bear-case value, and kill metric.

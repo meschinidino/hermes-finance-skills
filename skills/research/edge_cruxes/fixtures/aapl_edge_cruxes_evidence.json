@@ -1,0 +1,83 @@
+{
+  "steelman_no_trade": {
+    "draft": "A rational Senior could pass because the base case already assumes healthy durable revenue growth and margin discipline, leaving limited room for error if device demand or services growth disappoints.",
+    "source_label": "C-4 scenarios and B-3 valuation",
+    "excerpt_or_summary": "The filed scenario set and valuation range already embed optimistic operating assumptions.",
+    "source_key": "scenarios"
+  },
+  "counterparty": {
+    "draft": "The plausible counterparty is a benchmark-constrained large-cap holder reducing exposure because AAPL's scale makes incremental growth harder to underwrite versus faster index alternatives.",
+    "source_label": "C-1 Business and C-4 scenarios",
+    "excerpt_or_summary": "Business and scenario artifacts identify dependence on large installed-base monetization and continued revenue-growth assumptions.",
+    "source_key": "business"
+  },
+  "structural_mispricing": {
+    "draft": {
+      "asserts_edge": true,
+      "mechanism": "Index ownership and headline hardware-cycle focus can underweight the durability of services monetization and repurchase-supported per-share compounding.",
+      "persistence_reason": "The disagreement can persist until services mix, margin resilience, and capital return show up across several reported periods rather than one product cycle."
+    },
+    "source_label": "C-2 Moat and C-3 CapAlloc",
+    "excerpt_or_summary": "Moat and capital-allocation drafts support recurring ecosystem economics and shareholder-return behavior.",
+    "source_key": "moat"
+  },
+  "variant_view": {
+    "draft": "The variant view is that the market is over-indexing on near-term hardware cyclicality and underweighting ecosystem retention, services mix, and disciplined buybacks as per-share value drivers.",
+    "source_label": "C-2 Moat, C-3 CapAlloc, and C-4 scenarios",
+    "excerpt_or_summary": "Filed Analyst artifacts support ecosystem durability, capital return, and scenario drivers.",
+    "source_key": "capalloc"
+  },
+  "catalysts": {
+    "draft": [
+      {
+        "event": "Quarterly services revenue and gross-margin disclosures",
+        "timing": "next two 10-Q filings",
+        "why_it_matters": "Confirms or breaks the services-mix durability leg of the variant view."
+      },
+      {
+        "event": "Annual capital return authorization and diluted-share trend",
+        "timing": "next 10-K and annual authorization cycle",
+        "why_it_matters": "Tests whether per-share compounding remains supported by buybacks without balance-sheet strain."
+      }
+    ],
+    "source_label": "C-3 CapAlloc and B-3 valuation",
+    "excerpt_or_summary": "Capital allocation and valuation artifacts identify buybacks, margins, and revenue growth as thesis drivers.",
+    "source_key": "capalloc"
+  },
+  "cruxes": [
+    {
+      "kind": "edge_crux",
+      "claim": "Services mix must keep supporting consolidated economics.",
+      "metric": "services_revenue_growth_and_gross_margin",
+      "threshold_direction": "at_or_above",
+      "threshold_value": "stable-to-expanding services contribution with no material gross-margin compression",
+      "check_by": "2027-06-30",
+      "evidence_source_key": "scenarios"
+    },
+    {
+      "kind": "edge_crux",
+      "claim": "Buybacks must remain accretive rather than masking operating stagnation.",
+      "metric": "diluted_share_count_and_net_cash_trend",
+      "threshold_direction": "improves_or_stable",
+      "threshold_value": "diluted shares decline while net leverage remains within filed comfort range",
+      "check_by": "2027-06-30",
+      "evidence_source_key": "capalloc"
+    },
+    {
+      "kind": "edge_crux",
+      "claim": "The moat case requires sustained customer retention and ecosystem pricing power.",
+      "metric": "ecosystem_retention_or_services_attachment",
+      "threshold_direction": "at_or_above",
+      "threshold_value": "management disclosures or operating metrics remain consistent with high retention and attachment",
+      "check_by": "2027-06-30",
+      "evidence_source_key": "moat"
+    }
+  ],
+  "source_evidence_summary": {
+    "business": "Business artifact frames AAPL as an installed-base and ecosystem monetization case.",
+    "moat": "Moat artifact supports, but does not decide, the durability mechanism.",
+    "capalloc": "Capital allocation artifact supports buyback and balance-sheet discipline evidence.",
+    "scenarios": "Scenario artifact identifies filed valuation drivers and Senior-owned probabilities.",
+    "mechanical": "Gate card, method directive, valuation range, expectations line, and spine provide mechanical context."
+  }
+}
