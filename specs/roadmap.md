@@ -62,11 +62,13 @@ Typed M3 artifacts, ratifiable collection, Analyst audit checks, deterministic f
 `C-6 Risk` Analyst bundle. Produces pre-mortem, short-seller bear case, two-bucket risk register, bear-case value, and kill metric.
 **Done:** risk drafts include non-empty tail risks, a falsifiable kill metric, and ratifiable risk completeness.
 **Spec:** `specs/2026-07-01-m3-6-risk/`
-**Status:** Implementation under domain-invariant review; not yet complete.
+**Status:** M3.6 complete (fixture-backed C-6 Risk Analyst bundle, pre-mortem and short-seller bear-case brakes, separate modellable and tail-risk buckets, provenance-complete bear-case value reconciled to filed scenarios, typed-field kill metric falsifiability, and undecided review package collection). Validated with `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest skills/research/risk`, `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest`, and `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync python -m resolver AAPL`.
 
 ### M3.7 — Ratify aggregation
 Collect M2b and M3 ratifiables into one `SeniorReviewPackage`, call `Senior.ratify` once, and persist the Senior decision package for M4 synthesis.
 **Done:** every required judgment is present in one consolidated package and every item has a Senior decision before the package can be treated as ratified.
+**Spec:** `specs/2026-07-01-m3-7-ratify-aggregation/`
+**Status:** M3.7 complete (B-4 Gate Card verdict plus C-2 through C-6 review packages consolidated into one SeniorReviewPackage, injected Senior.ratify called exactly once on the GO/DCF path, complete SeniorDecisionPackage persisted for M4 synthesis, and NO-GO path remains unratified). Validated with `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest tests/test_m3_7_ratify_aggregation.py`, `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest`, and `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync python -m resolver AAPL`.
 
 ### M4 — Synthesis + the resolver
 `D-2 Conviction`, `D-3 Review Packager`; complete `resolver.md` behavior — routing table, escalation matrix, parallelism, KILL halt, the two Senior touchpoints. Full Handoff schema with revisit triggers.

@@ -226,13 +226,14 @@ def test_nested_risk_evidence_refs_must_resolve_even_when_aggregate_evidence_is_
         audit_risk_artifact(invalid, storage=storage)
 
 
-def test_resolver_reaches_risk_on_go_path_and_does_not_ratify(tmp_path) -> None:
+def test_resolver_reaches_risk_on_go_path_and_collects_for_ratification(tmp_path) -> None:
     payload = analyze("AAPL", as_of=RUN_DATE, storage=LocalStorage(tmp_path))
 
     assert payload["risk"]["header"]["produced_by"] == "C-6"
     assert payload["risk"]["tail_risks"]["draft"]
     assert payload["risk"]["bear_case_value"]["provenance"]["form"] == "computed"
     assert all(item["decision"] is None for item in payload["risk_review_package"]["review_items"])
+    assert payload["senior_decision_package"]["header"]["produced_by"] == "M3-7-ratify"
 
 
 def test_resolver_no_go_stops_before_risk(tmp_path) -> None:

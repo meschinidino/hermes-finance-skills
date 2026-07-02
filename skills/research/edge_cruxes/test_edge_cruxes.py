@@ -234,12 +234,13 @@ def test_duplicate_cruxes_are_rejected(tmp_path) -> None:
         audit_edge_cruxes(artifact.model_copy(update={"cruxes": artifact.cruxes.model_copy(update={"draft": cruxes})}), storage=storage)
 
 
-def test_resolver_reaches_edge_cruxes_on_go_path_and_does_not_ratify(tmp_path) -> None:
+def test_resolver_reaches_edge_cruxes_on_go_path_and_collects_for_ratification(tmp_path) -> None:
     payload = analyze("AAPL", as_of=RUN_DATE, storage=LocalStorage(tmp_path))
 
     assert payload["edge_cruxes"]["header"]["produced_by"] == "C-5"
     assert len(payload["edge_cruxes"]["cruxes"]["draft"]) == 3
     assert all(item["decision"] is None for item in payload["edge_cruxes_review_package"]["review_items"])
+    assert payload["senior_decision_package"]["header"]["produced_by"] == "M3-7-ratify"
 
 
 def test_resolver_no_go_stops_before_edge_cruxes(tmp_path) -> None:

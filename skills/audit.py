@@ -4,7 +4,7 @@ import math
 import re
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from skills._primitives import Number
 from skills.accountant_artifacts import BaseRateResult, ExpectationsLine, GateCard, MethodDirective, Spine, ValuationRange, iter_numbers
@@ -251,12 +251,22 @@ def _audit_no_bare_numeric_payload(value: Any, path: str) -> None:
     if isinstance(value, int | float):
         raise AuditError(f"{path} contains bare numeric value")
     if isinstance(value, dict):
+        if _is_serialized_number(value):
+            return
         for key, item in value.items():
             _audit_no_bare_numeric_payload(item, f"{path}.{key}")
         return
     if isinstance(value, list | tuple):
         for index, item in enumerate(value):
             _audit_no_bare_numeric_payload(item, f"{path}[{index}]")
+
+
+def _is_serialized_number(value: dict[str, Any]) -> bool:
+    try:
+        Number.model_validate(value)
+    except ValidationError:
+        return False
+    return True
 
 
 def _iter_m3_values(value: Any, target_type: type) -> list[Any]:

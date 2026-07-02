@@ -232,7 +232,7 @@ M3.6 can be marked complete in `specs/roadmap.md` only after:
 - full offline pytest passes;
 - `python -m resolver AAPL` passes in the offline fake configuration.
 
-Partial validation previously run on 2026-07-01:
+Validation run on 2026-07-01:
 
 ```text
 UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest skills/research/risk
@@ -240,7 +240,7 @@ UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest
 UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync python -m resolver AAPL
 ```
 
-Result: implementation exists, but M3.6 is not closed until domain-invariant review gaps are resolved.
+Result: M3.6 is closed. The focused Risk suite passed, full offline pytest passed, and the resolver AAPL smoke passed. The closure review confirms this change is limited to C-6 behavior, does not add M3.7 ratification or final Handoff synthesis, preserves the Senior touchpoint architecture, and keeps tail risks outside the modellable risk matrix.
 
 ## Pre-Landing Self-Review
 

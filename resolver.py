@@ -6,14 +6,14 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from skills.audit import audit_analyst_artifact, audit_artifact, audit_m1_handoff, audit_senior_review_package
+from skills.audit import audit_analyst_artifact, audit_artifact, audit_m1_handoff, audit_senior_decision_package, audit_senior_review_package
 from skills.config import load_config
 from skills.data.cost_of_capital.cost_of_capital import build_cost_of_capital_inputs
 from skills.data.edgar.edgar import fetch_edgar_facts
 from skills.data.price.price import fetch_price
 from skills.interfaces import LLM, PriceFeed, Senior, Storage
 from skills.accountant_artifacts import EdgarFacts
-from skills.analyst_artifacts import collect_ratifiables
+from skills.analyst_artifacts import ReviewSourceManifest, collect_accountant_ratifiables, collect_ratifiables, consolidate_review_packages, ratify_review_package
 from skills.research.business.business import BusinessArtifact, EarlyGateResult, StopArtifact, build_business_artifact
 from skills.research.capalloc.capalloc import build_capalloc_artifact
 from skills.research.edge_cruxes.edge_cruxes import audit_edge_cruxes, build_edge_cruxes_artifact
@@ -49,6 +49,7 @@ def analyze(
     run_date = as_of or date.today()
     config = load_config(config_path)
     active_storage = storage or LocalStorage()
+    active_senior = senior or _OfflineSenior()
 
     edgar = fetch_edgar_facts(normalized_ticker)
     price = fetch_price(normalized_ticker, edgar=edgar, price_feed=price_feed, as_of=run_date)
@@ -101,7 +102,7 @@ def analyze(
         ticker=normalized_ticker,
         as_of=run_date,
         schema_version=config.schema_version,
-        senior=senior or _OfflineEarlyGateSenior(),
+        senior=active_senior,
         analyst_family=_declared_family(llm) if llm is not None else "offline-business-drafter",
         storage=active_storage,
         run_dir=run_dir,
@@ -129,6 +130,15 @@ def analyze(
             "stop_artifact": active_storage.get_json(stop_path),
         }
         return payload
+
+    business_review = collect_ratifiables(
+        business,
+        ticker=normalized_ticker,
+        as_of=run_date,
+        header=_header(config.schema_version, "C-1-review"),
+        source_artifact=business_path,
+    )
+    audit_senior_review_package(business_review, storage=active_storage, path=f"{run_dir}/business_review_package.json")
 
     moat_path = f"{run_dir}/moat.json"
     moat = build_moat_artifact(
@@ -174,6 +184,14 @@ def analyze(
         schema_version=config.schema_version,
     )
     audit_artifact(gate_card, storage=active_storage, path=f"{run_dir}/gate_card.json")
+    gate_card_review = collect_accountant_ratifiables(
+        gate_card,
+        ticker=normalized_ticker,
+        as_of=run_date,
+        header=_header(config.schema_version, "B-4-review"),
+        source_artifact=f"{run_dir}/gate_card.json",
+    )
+    audit_senior_review_package(gate_card_review, storage=active_storage, path=f"{run_dir}/gate_card_review_package.json")
 
     method_directive = route_method(
         normalized,
@@ -268,15 +286,42 @@ def analyze(
             source_artifact=risk_path,
         )
         audit_senior_review_package(risk_review, storage=active_storage, path=f"{run_dir}/risk_review_package.json")
+        senior_review_package = consolidate_review_packages(
+            [gate_card_review, business_review, moat_review, capalloc_review, scenario_review, edge_cruxes_review, risk_review],
+            ticker=normalized_ticker,
+            as_of=run_date,
+            header=_header(config.schema_version, "M3-7-review"),
+            manifest=ReviewSourceManifest(
+                required_sources=(
+                    f"{run_dir}/gate_card.json",
+                    business_path,
+                    moat_path,
+                    capalloc_path,
+                    scenario_path,
+                    edge_cruxes_path,
+                    risk_path,
+                )
+            ),
+        )
+        audit_senior_review_package(senior_review_package, storage=active_storage, path=f"{run_dir}/senior_review_package.json")
+        senior_decision_package = ratify_review_package(
+            senior_review_package,
+            senior=active_senior,
+            analyst_family=_declared_family(llm) if llm is not None else "offline-analyst-drafters",
+            header=_header(config.schema_version, "M3-7-ratify"),
+        )
+        audit_senior_decision_package(senior_decision_package, storage=active_storage, path=f"{run_dir}/senior_decision_package.json")
 
     payload = active_storage.get_json(handoff_path)
     payload["business"] = active_storage.get_json(business_path)
+    payload["business_review_package"] = active_storage.get_json(f"{run_dir}/business_review_package.json")
     payload["early_gate"] = active_storage.get_json(f"{run_dir}/business_early_gate.json")
     payload["moat"] = active_storage.get_json(moat_path)
     payload["moat_review_package"] = active_storage.get_json(f"{run_dir}/moat_review_package.json")
     payload["capalloc"] = active_storage.get_json(capalloc_path)
     payload["capalloc_review_package"] = active_storage.get_json(f"{run_dir}/capalloc_review_package.json")
     payload["gate_card"] = active_storage.get_json(f"{run_dir}/gate_card.json")
+    payload["gate_card_review_package"] = active_storage.get_json(f"{run_dir}/gate_card_review_package.json")
     payload["method_directive"] = active_storage.get_json(f"{run_dir}/method_directive.json")
     payload["scenarios"] = active_storage.get_json(scenario_path)
     payload["scenarios_review_package"] = active_storage.get_json(f"{run_dir}/scenarios_review_package.json")
@@ -288,6 +333,8 @@ def analyze(
         return payload
     payload["risk"] = active_storage.get_json(f"{run_dir}/risk.json")
     payload["risk_review_package"] = active_storage.get_json(f"{run_dir}/risk_review_package.json")
+    payload["senior_review_package"] = active_storage.get_json(f"{run_dir}/senior_review_package.json")
+    payload["senior_decision_package"] = active_storage.get_json(f"{run_dir}/senior_decision_package.json")
     payload["valuation_range"] = active_storage.get_json(f"{run_dir}/valuation_range.json")
     payload["expectations_line"] = active_storage.get_json(f"{run_dir}/expectations_line.json")
 
@@ -298,7 +345,7 @@ class GateWiringError(ValueError):
     pass
 
 
-class _OfflineEarlyGateSenior:
+class _OfflineSenior:
     model_family = "offline-senior"
     decided_by = "offline-senior"
 
@@ -311,7 +358,14 @@ class _OfflineEarlyGateSenior:
         }
 
     def ratify(self, package: dict[str, Any]) -> dict[str, Any]:
-        raise NotImplementedError("M3.2 does not implement consolidated ratification")
+        item_ids = list(package.get("required_item_ids", []))
+        return {
+            "decided_by": self.decided_by,
+            "decisions": {
+                item_id: {"decision": "ratified", "final": None, "rationale": f"offline deterministic ratification accepted {item_id}"}
+                for item_id in item_ids
+            },
+        }
 
 
 def _run_business_early_gate(

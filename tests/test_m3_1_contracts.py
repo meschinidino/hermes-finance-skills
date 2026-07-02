@@ -121,6 +121,14 @@ def test_audit_allows_nested_number_wrapped_analyst_draft_payload() -> None:
     audit_analyst_artifact(artifact)
 
 
+def test_audit_rejects_number_shaped_dict_with_extra_bare_numeric_payload() -> None:
+    number_payload = sample_number(0.5).model_dump(mode="json")
+    artifact = sample_artifact().model_copy(update={"claim": sample_draft({**number_payload, "untrusted_score": 7})})
+
+    with pytest.raises(AuditError, match="bare numeric"):
+        audit_analyst_artifact(artifact)
+
+
 def test_audit_allows_bool_analyst_draft_payload() -> None:
     artifact = sample_artifact().model_copy(update={"claim": sample_draft({"requires_gate": True})})
 
