@@ -30,7 +30,7 @@ def fetch_price(
             source = str(quote.get("source", "InjectedPriceFeed"))
         else:
             fixture = _load_fixture()
-            price = float(fixture.get(normalized, DEFAULT_FIXTURE_PRICES[normalized]))
+            price = float(fixture[normalized] if normalized in fixture else DEFAULT_FIXTURE_PRICES[normalized])
             source = "fixture:tests/fixtures/aapl_price.json"
     except Exception:
         if edgar is None:

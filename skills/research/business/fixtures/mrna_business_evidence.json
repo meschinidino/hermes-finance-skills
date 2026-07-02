@@ -1,0 +1,26 @@
+{
+  "business_model_summary": {
+    "draft": "Moderna is a biotechnology platform company built around mRNA medicines, with marketed respiratory vaccines and a pipeline of vaccine, oncology, rare-disease, and other therapeutic programs.",
+    "source_label": "Moderna FY2025 Form 10-K business description",
+    "excerpt_or_summary": "The business description identifies Moderna as an mRNA medicines company with commercial products and development programs across multiple therapeutic areas.",
+    "filing_reference": "MRNA FY2025 Form 10-K, Item 1"
+  },
+  "revenue_driver_summary": {
+    "draft": "The revenue base is still highly product- and launch-dependent: COVID-19 vaccine demand has declined from pandemic levels, while future value depends on respiratory vaccine adoption and pipeline conversion.",
+    "source_label": "Moderna FY2025 Form 10-K product revenue and pipeline discussion",
+    "excerpt_or_summary": "The fixture anchors current revenue to commercial vaccine sales and future drivers to respiratory and pipeline programs rather than a mature recurring cash-flow base.",
+    "filing_reference": "MRNA FY2025 Form 10-K, Item 1 and MD&A"
+  },
+  "customer_end_market_summary": {
+    "draft": "End markets include governments, distributors, health systems, pharmacies, and patients reached through seasonal vaccination campaigns and potential future specialty-medicine channels.",
+    "source_label": "Moderna FY2025 Form 10-K customers and commercialization discussion",
+    "excerpt_or_summary": "The filing describes commercialization through healthcare channels and public/private purchasers for vaccine products.",
+    "filing_reference": "MRNA FY2025 Form 10-K, Item 1"
+  },
+  "business_understanding_risk": {
+    "draft": "The early gate should focus on whether a Senior is comfortable underwriting clinical, regulatory, launch, and financing optionality rather than treating reported historical COVID revenue as a stable base.",
+    "source_label": "Moderna FY2025 Form 10-K risk factors",
+    "excerpt_or_summary": "Risk factors emphasize uncertainty around product demand, clinical development, regulatory approvals, competition, and commercialization.",
+    "filing_reference": "MRNA FY2025 Form 10-K, Item 1A"
+  }
+}

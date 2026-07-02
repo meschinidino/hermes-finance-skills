@@ -26,6 +26,19 @@ def test_extracts_required_facts_with_provenance() -> None:
     assert "goodwill_explicit_zero" in facts.flags
 
 
+def test_extracts_mrna_real_sec_fixture_with_raw_usd_scale() -> None:
+    facts = fetch_edgar_facts("MRNA")
+
+    assert resolve_cik("MRNA") == "0001682852"
+    assert facts.cik == "0001682852"
+    assert facts.years == ["FY2021", "FY2022", "FY2023", "FY2024", "FY2025"]
+    assert facts.facts.revenue[-1].value == 1944
+    assert facts.facts.revenue[-1].provenance.accession == "0001682852-26-000033"
+    assert facts.facts.ebit[-1].value == -3074
+    assert facts.facts.ebit[-1].provenance.accession == "0001682852-26-000033"
+    assert "revenue_fallback:mixed:us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax,us-gaap:Revenues" in facts.flags
+
+
 def test_missing_required_concept_fails_closed(tmp_path: Path) -> None:
     fixture_dir = _copy_fixtures(tmp_path)
     facts_path = fixture_dir / "aapl_companyfacts.json"

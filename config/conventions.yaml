@@ -16,6 +16,12 @@ betas:
     source_url: "https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/Betas.html"
     source_date: "2026-01"
     tickers: ["AAPL"]
+  pre-revenue biotech:
+    unlevered: 1.08
+    source_name: "Damodaran:Betas by Sector (US) - Drugs/Biotechnology"
+    source_url: "https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/Betas.html"
+    source_date: "2026-01"
+    tickers: ["MRNA"]
 dcf:
   forecast_years: 5
   terminal_growth: 0.025

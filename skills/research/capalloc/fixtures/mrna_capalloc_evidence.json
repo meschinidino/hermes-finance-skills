@@ -1,0 +1,32 @@
+{
+  "reinvestment_behavior": {
+    "draft": "Moderna is reinvesting heavily in R&D and commercial infrastructure despite negative operating income; the Senior should judge whether that spending is disciplined option creation or value-destructive burn.",
+    "source_label": "MRNA FY2025 Form 10-K R&D and operating-expense discussion",
+    "excerpt_or_summary": "The fixture links high R&D intensity and operating losses to the filed spine and the pipeline-development strategy.",
+    "filing_reference": "MRNA FY2025 Form 10-K, MD&A and EDGAR-derived spine inputs",
+    "period": "FY2025",
+    "tag": "us-gaap:ResearchAndDevelopmentExpense",
+    "form": "10-K",
+    "fixture_ref": "skills/research/capalloc/fixtures/mrna_capalloc_evidence.json#reinvestment_behavior"
+  },
+  "shareholder_return_behavior": {
+    "draft": "Shareholder returns are not the central capital-allocation test for this route; dilution, buybacks, and financing flexibility must be judged against the cash runway and pipeline funding need.",
+    "source_label": "MRNA FY2025 Form 10-K equity and liquidity discussion",
+    "excerpt_or_summary": "The filing and EDGAR share-count facts provide the share-base context for a development-stage optionality case.",
+    "filing_reference": "MRNA FY2025 Form 10-K, liquidity and stockholders' equity disclosures",
+    "period": "FY2025",
+    "tag": "dei:EntityCommonStockSharesOutstanding",
+    "form": "10-K",
+    "fixture_ref": "skills/research/capalloc/fixtures/mrna_capalloc_evidence.json#shareholder_return_behavior"
+  },
+  "balance_sheet_discipline": {
+    "draft": "Balance-sheet discipline hinges on preserving cash and marketable resources long enough to fund clinical readouts and launches without forcing punitive financing.",
+    "source_label": "MRNA FY2025 EDGAR-derived cash and liability facts",
+    "excerpt_or_summary": "EDGAR-derived cash, liabilities, and lease-debt concepts frame runway and financing risk.",
+    "filing_reference": "MRNA FY2025 Form 10-K, balance sheet",
+    "period": "FY2025",
+    "tag": "us-gaap:CashAndCashEquivalentsAtCarryingValue",
+    "form": "10-K",
+    "fixture_ref": "skills/research/capalloc/fixtures/mrna_capalloc_evidence.json#balance_sheet_discipline"
+  }
+}

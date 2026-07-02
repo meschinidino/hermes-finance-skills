@@ -1,0 +1,70 @@
+{
+  "premortem": {
+    "draft": "Over the next two fiscal years the investment loses money if respiratory demand keeps falling while major pipeline programs miss or slip, causing downside pressure before cash runway can convert into approved products.",
+    "source_label": "C-4 rNPV scenarios and C-5 edge cruxes",
+    "excerpt_or_summary": "Scenario and edge-crux artifacts identify product-demand, clinical, regulatory, and runway risks.",
+    "source_key": "edge_cruxes"
+  },
+  "bear_case_narrative": {
+    "draft": "A credible short seller's bear case is that Moderna remains a post-pandemic revenue-reset story: because product demand contracts and pipeline milestones fail to compound into launches, fixed R&D pressure persists, cash burn keeps several periods of financing risk alive, and downside can persist while estimates reset.",
+    "source_label": "C-4 rNPV scenarios",
+    "excerpt_or_summary": "The filed bear scenario quantifies a lower rNPV route tied to program probability and cash-runway pressure.",
+    "source_key": "scenarios"
+  },
+  "modellable_risks": [
+    {
+      "risk": "Material pipeline program probability is lower than the filed base rNPV scenario.",
+      "impact": "high",
+      "likelihood": "med",
+      "modeled_effect": "Lower probability-of-success and launch timing reduce the rNPV scenario value.",
+      "source_label": "C-4 rNPV scenarios",
+      "excerpt_or_summary": "The scenario artifact binds bear/base/bull values to program probability and launch assumptions.",
+      "source_key": "scenarios"
+    },
+    {
+      "risk": "Cash burn forces financing before priority clinical readouts.",
+      "impact": "high",
+      "likelihood": "med",
+      "modeled_effect": "Dilution or financing pressure lowers the per-share rNPV anchor and conviction.",
+      "source_label": "C-3 capital allocation",
+      "excerpt_or_summary": "Capital allocation evidence frames cash runway and financing flexibility as a core thesis monitor.",
+      "source_key": "capalloc"
+    }
+  ],
+  "tail_risks": [
+    {
+      "risk": "A safety signal or regulatory hold changes the perceived platform risk across programs.",
+      "why_not_modelled": "The timing, scope, and cross-program read-through are discontinuous and cannot be responsibly scored as a simple impact-times-likelihood input.",
+      "monitoring_signal": "FDA clinical hold, safety-related label restriction, or disclosed serious adverse-event pattern for a priority program.",
+      "source_label": "C-2 moat and C-5 edge cruxes",
+      "excerpt_or_summary": "Moat and edge artifacts frame platform credibility as a route-specific risk not captured by normal scenarios.",
+      "source_key": "moat"
+    }
+  ],
+  "kill_metric": {
+    "metric": "priority_pipeline_or_runway_break",
+    "threshold_direction": "below",
+    "threshold_value": 0.25,
+    "threshold_unit": "ratio",
+    "threshold_period": "FY2028",
+    "check_by": "2028-12-31",
+    "thesis_action": "Force Senior re-underwrite of the rNPV route and move to pass unless another audited program offsets the broken probability or runway leg.",
+    "source_label": "C-5 edge cruxes",
+    "excerpt_or_summary": "The pipeline probability and runway cruxes are the central falsifiable monitors for the variant view.",
+    "source_key": "edge_cruxes"
+  },
+  "risk_completeness": {
+    "draft": "The sheet is decision-ready for M3.6 because the main downside path, rNPV bear value, modelled risks, and tail bucket are tied to filed route artifacts. Could not verify real-time trial enrollment, exact regulatory probabilities, or current-season demand beyond authored fixtures. A material approval or clean pivotal readout would raise confidence; a safety hold, failed readout, or financing below the kill metric would lower confidence.",
+    "source_label": "C-6 source stack",
+    "excerpt_or_summary": "Filed artifacts provide enough evidence for an undecided Senior review package while preserving explicit gaps.",
+    "source_key": "edge_cruxes"
+  },
+  "source_evidence_summary": {
+    "business": "Business artifact frames MRNA as a platform/pipeline optionality case.",
+    "moat": "Moat artifact supplies platform-learning and clinical-execution context.",
+    "capalloc": "Capital allocation artifact supplies cash-runway and reinvestment context.",
+    "scenarios": "Scenario artifact supplies filed rNPV bear/base/bull paths and bear value.",
+    "edge_cruxes": "Edge & Cruxes artifact supplies falsifiable route-specific thesis monitors.",
+    "mechanical": "Gate card, method directive, and spine provide mechanical downside context without DCF artifacts."
+  }
+}

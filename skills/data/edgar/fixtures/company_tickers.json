@@ -3,6 +3,10 @@
     "cik_str": 320193,
     "ticker": "AAPL",
     "title": "Apple Inc."
+  },
+  "1": {
+    "cik_str": 1682852,
+    "ticker": "MRNA",
+    "title": "Moderna, Inc."
   }
 }
-

@@ -39,7 +39,7 @@ def route_method(
         routing_reason=reason,
         indicators=indicators,
         implemented=method == "DCF",
-        fallback_behavior=("invoke B-3 DCF" if method == "DCF" else f"file directive and defer {method}; no substitute DCF"),
+        fallback_behavior=("invoke B-3 DCF" if method == "DCF" else f"file directive and continue with {method}-specific C-4/C-6 route artifacts; no substitute DCF"),
     )
 
 

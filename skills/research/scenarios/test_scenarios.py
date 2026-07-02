@@ -223,7 +223,7 @@ def test_method_directive_must_resolve_to_b6(tmp_path) -> None:
         audit_scenario_set(invalid, storage=storage)
 
 
-def test_non_dcf_deferred_artifact_is_substantive_and_does_not_force_dcf_drivers(tmp_path) -> None:
+def test_non_dcf_artifact_is_substantive_and_does_not_force_dcf_drivers(tmp_path) -> None:
     storage = LocalStorage(tmp_path)
     directive = _non_dcf_directive()
     storage.put_json(f"{RUN_DIR}/method_directive.json", artifact_model_to_payload(directive))
@@ -238,11 +238,12 @@ def test_non_dcf_deferred_artifact_is_substantive_and_does_not_force_dcf_drivers
 
     audit_scenario_set(artifact, storage=storage)
 
-    assert artifact.status == "method_deferred"
-    assert artifact.source_evidence_summary["deferred_method"] == "rNPV"
+    assert artifact.status == "drafted"
+    assert artifact.source_evidence_summary["method"] == "rNPV"
     assert all(scenario.probability is not None for scenario in artifact.scenarios)
-    assert all(scenario.assumptions[0].driver == "rNPV_scenario_frame" for scenario in artifact.scenarios)
-    assert all(scenario.assumptions[0].evidence_refs for scenario in artifact.scenarios)
+    assert all(scenario.value is not None for scenario in artifact.scenarios)
+    assert all(scenario.assumptions[0].driver == "rNPV_program_probability" for scenario in artifact.scenarios)
+    assert all(assumption.evidence_refs for scenario in artifact.scenarios for assumption in scenario.assumptions)
 
     forced_dcf = _with_assumption_driver(artifact, "revenue_growth")
     with pytest.raises(AuditError, match="DCF-only driver revenue_growth"):

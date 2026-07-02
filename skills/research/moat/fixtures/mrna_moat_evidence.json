@@ -1,0 +1,42 @@
+{
+  "moat_mechanism": {
+    "draft": {
+      "claim": "Moderna's potential moat is platform learning and manufacturing know-how in mRNA, but it is not a mature cash-generator moat and must be ratified as pipeline optionality.",
+      "mechanism_category": "intangible_assets",
+      "support_categories": [
+        "forward_mechanism",
+        "pipeline_breadth",
+        "manufacturing_know_how",
+        "clinical_execution"
+      ],
+      "mechanism_evidence": "The mRNA platform, product experience, and program portfolio may create reusable capabilities, but durability depends on future approvals and adoption."
+    },
+    "source_label": "Moderna FY2025 Form 10-K platform and pipeline discussion",
+    "excerpt_or_summary": "The fixture identifies the mRNA platform and program portfolio as forward-looking capability evidence, not proof from historical ROIC.",
+    "filing_reference": "MRNA FY2025 Form 10-K, Item 1",
+    "period": "FY2025",
+    "tag": "us-gaap:BusinessDescription",
+    "form": "10-K",
+    "fixture_ref": "skills/research/moat/fixtures/mrna_moat_evidence.json#moat_mechanism"
+  },
+  "historical_economics": {
+    "draft": "FY2025 economics are negative after the COVID demand reset, so historical spread evidence is disconfirming for a mature moat and supports routing to rNPV-style optionality.",
+    "source_label": "MRNA filed spine artifact",
+    "excerpt_or_summary": "The spine carries negative FY2025 operating income and ROIC evidence from EDGAR-derived facts.",
+    "filing_reference": "MRNA FY2025 Form 10-K, EDGAR-derived spine inputs",
+    "period": "FY2025",
+    "tag": "computed:spread",
+    "form": "10-K",
+    "fixture_ref": "skills/research/moat/fixtures/mrna_moat_evidence.json#historical_economics"
+  },
+  "durability_risk": {
+    "draft": "The durability risk is that platform breadth does not translate into approved, commercially durable medicines before cash burn and competition erode the option value.",
+    "source_label": "Moderna FY2025 Form 10-K clinical, regulatory, and competition risks",
+    "excerpt_or_summary": "Risk factors discuss clinical failure, approval uncertainty, competitive intensity, and commercial demand uncertainty.",
+    "filing_reference": "MRNA FY2025 Form 10-K, Item 1A",
+    "period": "FY2025",
+    "tag": "us-gaap:RiskFactors",
+    "form": "10-K",
+    "fixture_ref": "skills/research/moat/fixtures/mrna_moat_evidence.json#durability_risk"
+  }
+}

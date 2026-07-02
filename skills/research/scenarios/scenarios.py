@@ -114,7 +114,7 @@ def build_scenario_set_artifact(
     method_directive = _load_method_directive(storage, method_directive_path)
     audit_artifact(method_directive)
     if method_directive.method != "DCF":
-        return _build_method_deferred(
+        return _build_non_dcf_scenarios(
             ticker=ticker,
             as_of=as_of,
             schema_version=schema_version,
@@ -200,11 +200,9 @@ def audit_scenario_set(artifact: ScenarioSetArtifact, *, storage: Storage, path:
     if method_directive.header.produced_by != "B-6":
         raise AuditError("scenario method directive must resolve to B-6")
     audit_artifact(method_directive)
-    if artifact.status == "method_deferred":
-        _audit_deferred_method(artifact, method_directive)
-        return
     if method_directive.method != "DCF":
-        raise AuditError(f"scenario artifact imposes DCF frame while method is {method_directive.method}")
+        _audit_non_dcf_method(artifact, method_directive)
+        return
     if not artifact.valuation_range_path:
         raise AuditError("DCF scenario artifact missing valuation range reference")
     valuation = _load_valuation_range(storage, artifact.valuation_range_path)
@@ -239,7 +237,7 @@ def audit_scenario_set(artifact: ScenarioSetArtifact, *, storage: Storage, path:
                 raise AuditError(f"scenario {scenario.name} driver {assumption.driver} base-rate missing citation")
 
 
-def _build_method_deferred(
+def _build_non_dcf_scenarios(
     *,
     ticker: str,
     as_of: date,
@@ -250,65 +248,126 @@ def _build_method_deferred(
     evidence = _evidence_ref(
         source_label="B-6 method directive",
         artifact_path=method_directive_path,
-        summary=f"{method_directive.method} route selected for {method_directive.asset_class}; DCF scenario drivers deferred.",
+        summary=f"{method_directive.method} route selected for {method_directive.asset_class}; scenarios use route-specific optionality drivers and no DCF artifacts.",
         period="M3.4",
-        tag="computed:method_deferred_scenario_evidence",
+        tag="computed:non_dcf_scenario_evidence",
     )
-    scenarios = [
-        ScenarioEntry(
-            name=name,
-            assumptions=[
-                ScenarioAssumptionDraft(
-                    driver=f"{method_directive.method}_scenario_frame",
-                    value=None,
-                    base_rate_anchor=None,
-                    evidence_refs=[evidence],
-                    rationale=f"{name} case is deferred to the selected {method_directive.method} method rather than forcing plain DCF drivers.",
-                )
+    produced_at = datetime.now(timezone.utc)
+    route_specs = {
+        "bear": {
+            "value": 12.0,
+            "probability": 0.30,
+            "drivers": [
+                ("rNPV_program_probability", 0.15, "ratio", "Priority pipeline probability remains low after clinical or regulatory setbacks."),
+                ("rNPV_launch_timing_years", 4.0, "years", "Launch conversion is delayed beyond the valuation horizon that would matter for current holders."),
+                ("rNPV_cash_runway_years", 2.0, "years", "Cash runway tightens before enough milestones convert into commercial products."),
             ],
-            probability=AnalystDraft(
-                draft={
-                    "scenario": name,
-                    "deferred_method": method_directive.method,
-                    "reason": method_directive.routing_reason,
-                },
-                evidence_refs=[evidence],
-                checklist_area=f"scenario_probability_{name}",
-                checklist_rationale=f"Senior must later ratify {name} probability after a {method_directive.method} scenario engine exists.",
-            ),
+        },
+        "base": {
+            "value": 32.0,
+            "probability": 0.45,
+            "drivers": [
+                ("rNPV_program_probability", 0.35, "ratio", "A subset of respiratory or therapeutic programs advances without assuming portfolio-wide success."),
+                ("rNPV_launch_timing_years", 3.0, "years", "Material launches or approvals arrive within an investable monitoring window."),
+                ("rNPV_cash_runway_years", 3.0, "years", "Existing resources fund priority readouts with manageable dilution risk."),
+            ],
+        },
+        "bull": {
+            "value": 65.0,
+            "probability": 0.25,
+            "drivers": [
+                ("rNPV_program_probability", 0.55, "ratio", "Multiple programs convert into credible commercial assets."),
+                ("rNPV_launch_timing_years", 2.0, "years", "Approvals or launches arrive soon enough to change the revenue-reset narrative."),
+                ("rNPV_cash_runway_years", 4.0, "years", "Cash runway remains sufficient to fund readouts and launches without punitive financing."),
+            ],
+        },
+    }
+    scenarios = []
+    for name in SCENARIO_ORDER:
+        spec = route_specs[name]
+        scenarios.append(
+            ScenarioEntry(
+                name=name,
+                value=_route_value_number(
+                    float(spec["value"]),
+                    method=method_directive.method,
+                    scenario=name,
+                    produced_at=produced_at,
+                    method_directive_path=method_directive_path,
+                ),
+                assumptions=[
+                    ScenarioAssumptionDraft(
+                        driver=driver,
+                        value=_route_driver_number(
+                            value,
+                            driver=driver,
+                            unit=unit,
+                            scenario=name,
+                            produced_at=produced_at,
+                            method_directive_path=method_directive_path,
+                        ),
+                        base_rate_anchor=None,
+                        evidence_refs=[evidence],
+                        rationale=rationale,
+                    )
+                    for driver, value, unit, rationale in spec["drivers"]
+                ],
+                probability=AnalystDraft(
+                    draft={
+                        "scenario": name,
+                        "method": method_directive.method,
+                        "probability": _probability_number(
+                            float(spec["probability"]),
+                            scenario=name,
+                            period=f"M3.4-{method_directive.method}",
+                            produced_at=produced_at,
+                        ),
+                    },
+                    evidence_refs=[evidence],
+                    checklist_area=f"scenario_probability_{name}",
+                    checklist_rationale=f"Senior must ratify the {name} probability for the {method_directive.method} route.",
+                ),
+            )
         )
-        for name in SCENARIO_ORDER
-    ]
     return ScenarioSetArtifact(
-        header=Header(schema_version=schema_version, produced_by="C-4", produced_at=datetime.now(timezone.utc)),
+        header=Header(schema_version=schema_version, produced_by="C-4", produced_at=produced_at),
         ticker=ticker,
         as_of=as_of,
-        status="method_deferred",
+        status="drafted",
         method_directive_path=method_directive_path,
         valuation_range_path=None,
         expectations_line_path=None,
         scenarios=scenarios,
         source_evidence_summary={
             "method_directive": method_directive_path,
-            "deferred_method": method_directive.method,
+            "method": method_directive.method,
             "routing_reason": method_directive.routing_reason,
+            "route_drivers": "rNPV program probability, launch timing, cash runway, and dilution/financing risk",
         },
     )
 
 
-def _audit_deferred_method(artifact: ScenarioSetArtifact, method_directive: MethodDirective) -> None:
+def _audit_non_dcf_method(artifact: ScenarioSetArtifact, method_directive: MethodDirective) -> None:
     if method_directive.method == "DCF":
-        raise AuditError("DCF method directive cannot use method_deferred scenario status")
+        raise AuditError("DCF method directive cannot use non-DCF scenario audit")
+    if artifact.status != "drafted":
+        raise AuditError(f"{method_directive.method} scenario artifact must be drafted, not deferred")
+    _audit_probabilities(artifact)
+    _audit_value_ordering(artifact)
     for scenario in artifact.scenarios:
-        if scenario.value is not None:
-            raise AuditError(f"deferred {method_directive.method} scenario {scenario.name} must not file DCF value")
+        if scenario.value is None:
+            raise AuditError(f"{method_directive.method} scenario {scenario.name} requires route value")
         if scenario.probability is None:
-            raise AuditError(f"deferred {method_directive.method} scenario {scenario.name} missing ratifiable probability deferral")
+            raise AuditError(f"{method_directive.method} scenario {scenario.name} missing ratifiable probability")
         for assumption in scenario.assumptions:
             if assumption.driver in DCF_ONLY_DRIVERS:
                 raise AuditError(f"method {method_directive.method} rejects DCF-only driver {assumption.driver}")
-            if method_directive.method not in assumption.driver:
-                raise AuditError(f"deferred scenario {scenario.name} missing method-appropriate driver evidence")
+            if not assumption.driver.startswith(f"{method_directive.method}_"):
+                raise AuditError(f"scenario {scenario.name} missing method-appropriate driver evidence")
+            if assumption.value is None:
+                raise AuditError(f"{method_directive.method} scenario {scenario.name} driver {assumption.driver} missing value")
+            if not assumption.evidence_refs:
+                raise AuditError(f"{method_directive.method} scenario {scenario.name} driver {assumption.driver} missing evidence")
 
 
 def _audit_probabilities(artifact: ScenarioSetArtifact) -> None:
@@ -379,7 +438,7 @@ def _probability_number(value: float, *, scenario: str, period: str, produced_at
             source_name="C-4 Scenarios deterministic draft",
             retrieved_at=produced_at,
         ),
-        derivation=f"draft probability copied from B-3 placeholder solely as an undecided C-4 Senior-owned probability; inputs: B-3 {scenario} scenario",
+        derivation=f"draft probability from C-4 scenario construction; inputs: filed {scenario} scenario evidence and method directive",
     )
 
 
@@ -390,6 +449,55 @@ def _computed_number(value: float, tag: str, period: str, unit: str, produced_at
         kind="estimate",
         provenance=Provenance(tag=tag, form="computed", period=period, accession=None, source_name="C-4 Scenarios", retrieved_at=produced_at),
         derivation=f"deterministic scenario base-rate support input; inputs: {tag}",
+    )
+
+
+def _route_value_number(
+    value: float,
+    *,
+    method: str,
+    scenario: str,
+    produced_at: datetime,
+    method_directive_path: str,
+) -> Number:
+    return Number(
+        value=value,
+        unit="USD_per_share",
+        kind="estimate",
+        provenance=Provenance(
+            tag=f"computed:{method}:scenario_value_{scenario}",
+            form="computed",
+            period=f"M3.4-{method}",
+            accession=None,
+            source_name="C-4 Scenarios",
+            retrieved_at=produced_at,
+        ),
+        derivation=f"inputs: {method_directive_path}; route-specific {method} scenario value from filed method directive and authored C-4 optionality drivers.",
+    )
+
+
+def _route_driver_number(
+    value: float,
+    *,
+    driver: str,
+    unit: str,
+    scenario: str,
+    produced_at: datetime,
+    method_directive_path: str,
+) -> Number:
+    return Number(
+        value=float(value),
+        unit=unit,
+        kind="estimate",
+        provenance=Provenance(
+            tag=f"computed:{driver}_{scenario}",
+            form="computed",
+            period=f"M3.4-{scenario}",
+            accession=None,
+            source_name="C-4 Scenarios",
+            retrieved_at=produced_at,
+        ),
+        derivation=f"inputs: {method_directive_path}; route-specific driver assumption for {scenario} scenario.",
     )
 
 

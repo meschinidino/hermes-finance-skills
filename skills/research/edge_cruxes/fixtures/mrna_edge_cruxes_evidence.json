@@ -1,0 +1,83 @@
+{
+  "steelman_no_trade": {
+    "draft": "A rational Senior could pass because rNPV outcomes are wide, clinical and launch probabilities are uncertain, and the public filings already show negative operating income after the COVID revenue reset.",
+    "source_label": "C-4 rNPV scenarios and MRNA filed spine",
+    "excerpt_or_summary": "The filed scenario set and spine identify a wide optionality range and current operating losses.",
+    "source_key": "scenarios"
+  },
+  "counterparty": {
+    "draft": "The plausible counterparty is a risk-budgeted biotech holder or index participant selling because near-term losses, launch uncertainty, and trial risk may not fit their mandate even if pipeline option value remains.",
+    "source_label": "C-1 Business and C-4 rNPV scenarios",
+    "excerpt_or_summary": "Business and scenario artifacts identify clinical, regulatory, and launch uncertainty as the central disagreement mechanism.",
+    "source_key": "business"
+  },
+  "structural_mispricing": {
+    "draft": {
+      "asserts_edge": true,
+      "mechanism": "Generalist holders can underweight a portfolio of clinical options after the COVID revenue reset because losses screen poorly before binary program updates.",
+      "persistence_reason": "The disagreement can persist until multiple readouts, approvals, or commercial launches convert pipeline optionality into observable revenue."
+    },
+    "source_label": "C-2 Moat and C-4 rNPV scenarios",
+    "excerpt_or_summary": "Moat and scenario drafts support platform optionality and route-specific program drivers.",
+    "source_key": "moat"
+  },
+  "variant_view": {
+    "draft": "The variant view is that the market is over-indexing on COVID revenue decline and underweighting rNPV from respiratory launches and oncology or rare-disease pipeline milestones.",
+    "source_label": "C-1 Business, C-2 Moat, and C-4 rNPV scenarios",
+    "excerpt_or_summary": "Filed Analyst artifacts support pipeline optionality rather than a DCF cash-generator frame.",
+    "source_key": "scenarios"
+  },
+  "catalysts": {
+    "draft": [
+      {
+        "event": "Regulatory decisions or pivotal clinical updates for non-COVID pipeline programs",
+        "timing": "next six to eight reported quarters",
+        "why_it_matters": "Converts or breaks rNPV probability assumptions."
+      },
+      {
+        "event": "Seasonal respiratory vaccine demand and product revenue disclosures",
+        "timing": "next two annual respiratory seasons",
+        "why_it_matters": "Tests whether the commercial base can support pipeline funding."
+      }
+    ],
+    "source_label": "C-4 rNPV scenarios and C-6 risk setup",
+    "excerpt_or_summary": "Scenario and risk artifacts identify program probability and launch demand as thesis drivers.",
+    "source_key": "scenarios"
+  },
+  "cruxes": [
+    {
+      "kind": "edge_crux",
+      "claim": "Pipeline probability must improve enough to offset cash burn.",
+      "metric": "material_pipeline_readouts_or_approvals",
+      "threshold_direction": "at_or_above",
+      "threshold_value": "at least one material non-COVID program advances or receives approval without a major safety setback",
+      "check_by": "2028-06-30",
+      "evidence_source_key": "scenarios"
+    },
+    {
+      "kind": "edge_crux",
+      "claim": "Respiratory franchise revenue must stabilize the funding base.",
+      "metric": "respiratory_product_revenue_trend",
+      "threshold_direction": "improves_or_stable",
+      "threshold_value": "seasonal revenue decline slows or stabilizes versus the filed bear path",
+      "check_by": "2028-06-30",
+      "evidence_source_key": "business"
+    },
+    {
+      "kind": "edge_crux",
+      "claim": "Cash runway must remain sufficient for value-creating readouts.",
+      "metric": "cash_runway_and_financing_need",
+      "threshold_direction": "at_or_above",
+      "threshold_value": "cash resources fund the next two years of priority readouts without punitive dilution",
+      "check_by": "2028-06-30",
+      "evidence_source_key": "capalloc"
+    }
+  ],
+  "source_evidence_summary": {
+    "business": "Business artifact frames MRNA as an mRNA platform and vaccine/pipeline optionality case.",
+    "moat": "Moat artifact supports platform learning while flagging lack of mature cash-generator economics.",
+    "capalloc": "Capital allocation artifact supplies cash-runway and reinvestment context.",
+    "scenarios": "Scenario artifact identifies rNPV-specific program, launch, and runway drivers.",
+    "mechanical": "Gate card, method directive, and spine provide mechanical context without DCF artifacts."
+  }
+}

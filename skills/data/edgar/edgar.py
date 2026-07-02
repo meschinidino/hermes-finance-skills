@@ -32,10 +32,10 @@ CONCEPT_FALLBACKS = {
         "us-gaap:DepreciationDepletionAndAmortization",
         "us-gaap:DepreciationDepletionAndAmortizationExpense",
     ],
-    "selling_general_admin": ["us-gaap:SellingGeneralAndAdministrativeExpense"],
+    "selling_general_admin": ["us-gaap:SellingGeneralAndAdministrativeExpense", "us-gaap:GeneralAndAdministrativeExpense"],
     "inventory": ["us-gaap:InventoryNet"],
-    "long_term_debt_noncurrent": ["us-gaap:LongTermDebtNoncurrent", "us-gaap:LongTermDebt"],
-    "long_term_debt_current": ["us-gaap:LongTermDebtCurrent"],
+    "long_term_debt_noncurrent": ["us-gaap:LongTermDebtNoncurrent", "us-gaap:LongTermDebt", "us-gaap:FinanceLeaseLiabilityNoncurrent"],
+    "long_term_debt_current": ["us-gaap:LongTermDebtCurrent", "us-gaap:FinanceLeaseLiabilityCurrent"],
     "short_term_borrowings": ["us-gaap:ShortTermBorrowings", "us-gaap:DebtCurrent"],
     "equity": [
         "us-gaap:StockholdersEquity",
@@ -61,11 +61,12 @@ def fetch_edgar_facts(ticker: str, *, fixture_dir: Path = FIXTURE_DIR) -> EdgarF
     raw = _load_json(fixture_dir / f"{normalized.lower()}_companyfacts.json")
     retrieved_at = datetime.now(timezone.utc)
     years = _available_years(raw)
+    usd_divisor = 1_000_000 if raw.get("value_scale") == "sec_raw_usd" else 1
     facts: dict[str, list[Number]] = {}
     flags: list[str] = []
 
     for concept_name, fallback_tags in CONCEPT_FALLBACKS.items():
-        extracted = _extract_concept(raw, fallback_tags, years, retrieved_at)
+        extracted = _extract_concept(raw, fallback_tags, years, retrieved_at, usd_divisor=usd_divisor)
         if extracted is None:
             if concept_name in OPTIONAL_ZERO_CONCEPTS:
                 flags.append(f"{concept_name}_explicit_zero")
@@ -108,7 +109,10 @@ def _extract_concept(
     fallback_tags: list[str],
     years: list[str],
     retrieved_at: datetime,
+    *,
+    usd_divisor: int,
 ) -> ExtractedConcept | None:
+    combined_by_year: dict[str, tuple[dict[str, Any], str]] = {}
     for tag in fallback_tags:
         unit = "shares" if tag == "dei:EntityCommonStockSharesOutstanding" else "USD"
         rows = _tag_values(raw, tag, unit)
@@ -119,11 +123,27 @@ def _extract_concept(
         }
         if all(year in by_year for year in years):
             number_unit = "shares" if unit == "shares" else "USD_millions"
-            divisor = 1_000_000 if unit == "shares" else 1
+            divisor = 1_000_000 if unit == "shares" else usd_divisor
             return ExtractedConcept(
                 values=[_fact_number(by_year[year], tag, year, number_unit, divisor, retrieved_at) for year in years],
                 tag=tag,
             )
+        for year in years:
+            if year in by_year and year not in combined_by_year:
+                combined_by_year[year] = (by_year[year], tag)
+    if all(year in combined_by_year for year in years):
+        first_tag = fallback_tags[0]
+        unit = "shares" if first_tag == "dei:EntityCommonStockSharesOutstanding" else "USD"
+        number_unit = "shares" if unit == "shares" else "USD_millions"
+        divisor = 1_000_000 if unit == "shares" else usd_divisor
+        used_tags = {combined_by_year[year][1] for year in years}
+        return ExtractedConcept(
+            values=[
+                _fact_number(combined_by_year[year][0], combined_by_year[year][1], year, number_unit, divisor, retrieved_at)
+                for year in years
+            ],
+            tag=first_tag if used_tags == {first_tag} else "mixed:" + ",".join(sorted(used_tags)),
+        )
     return None
 
 

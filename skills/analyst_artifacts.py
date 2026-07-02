@@ -109,15 +109,18 @@ class SeniorReviewPackage(M3Model):
 
 
 class ReviewSourceManifest(M3Model):
+    method: str = "unspecified"
     required_sources: tuple[str, ...]
+    required_context_sources: tuple[str, ...] = ()
 
     @model_validator(mode="after")
     def validate_manifest(self) -> ReviewSourceManifest:
         if not self.required_sources:
             raise ValueError("review source manifest requires sources")
-        if any(not source.strip() for source in self.required_sources):
+        if any(not source.strip() for source in (*self.required_sources, *self.required_context_sources)):
             raise ValueError("review source manifest sources must be non-empty")
-        if len(set(self.required_sources)) != len(self.required_sources):
+        all_sources = (*self.required_sources, *self.required_context_sources)
+        if len(set(all_sources)) != len(all_sources):
             raise ValueError("review source manifest sources must be unique")
         return self
 
@@ -261,6 +264,7 @@ def consolidate_review_packages(
     as_of: date,
     header: Header,
     manifest: ReviewSourceManifest | Sequence[str] | None = None,
+    context_sources: dict[str, str] | None = None,
 ) -> SeniorReviewPackage:
     if not packages:
         raise ValueError("consolidated review package requires source packages")
@@ -276,6 +280,7 @@ def consolidate_review_packages(
             seen.add(item.id)
             review_items.append(item)
         source_summary.update(package.source_artifact_summary)
+    source_summary.update(context_sources or {})
     package = SeniorReviewPackage(
         header=header,
         ticker=ticker,
@@ -290,13 +295,15 @@ def consolidate_review_packages(
 
 
 def _validate_review_source_manifest(package: SeniorReviewPackage, manifest: ReviewSourceManifest) -> None:
-    missing_summary = sorted(source for source in manifest.required_sources if source not in package.source_artifact_summary)
+    route_contract = f"{manifest.method} route contract"
+    required_summary_sources = (*manifest.required_sources, *manifest.required_context_sources)
+    missing_summary = sorted(source for source in required_summary_sources if source not in package.source_artifact_summary)
     if missing_summary:
-        raise ValueError(f"consolidated review package missing required sources: {', '.join(missing_summary)}")
+        raise ValueError(f"{route_contract} missing required sources: {', '.join(missing_summary)}")
     item_sources = {item.source_artifact for item in package.review_items}
     missing_items = sorted(source for source in manifest.required_sources if source not in item_sources)
     if missing_items:
-        raise ValueError(f"consolidated review package missing required review items: {', '.join(missing_items)}")
+        raise ValueError(f"{route_contract} missing required review items: {', '.join(missing_items)}")
 
 
 def _outcome_for_decision_payload(payload: Any) -> RatificationOutcome:
