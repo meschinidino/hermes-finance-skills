@@ -227,13 +227,18 @@ def test_nested_risk_evidence_refs_must_resolve_even_when_aggregate_evidence_is_
 
 
 def test_resolver_reaches_risk_on_go_path_and_collects_for_ratification(tmp_path) -> None:
-    payload = analyze("AAPL", as_of=RUN_DATE, storage=LocalStorage(tmp_path))
+    storage = LocalStorage(tmp_path)
+    payload = analyze("AAPL", as_of=RUN_DATE, storage=storage)
+    risk = storage.get_json(f"{RUN_DIR}/risk.json")
+    review_package = storage.get_json(f"{RUN_DIR}/risk_review_package.json")
+    decision_package = storage.get_json(f"{RUN_DIR}/senior_decision_package.json")
 
-    assert payload["risk"]["header"]["produced_by"] == "C-6"
-    assert payload["risk"]["tail_risks"]["draft"]
-    assert payload["risk"]["bear_case_value"]["provenance"]["form"] == "computed"
-    assert all(item["decision"] is None for item in payload["risk_review_package"]["review_items"])
-    assert payload["senior_decision_package"]["header"]["produced_by"] == "M3-7-ratify"
+    assert payload["risk"]["header"]["produced_by"] == "D-3-risk"
+    assert risk["header"]["produced_by"] == "C-6"
+    assert risk["tail_risks"]["draft"]
+    assert risk["bear_case_value"]["provenance"]["form"] == "computed"
+    assert all(item["decision"] is None for item in review_package["review_items"])
+    assert decision_package["header"]["produced_by"] == "M3-7-ratify"
 
 
 def test_resolver_no_go_stops_before_risk(tmp_path) -> None:

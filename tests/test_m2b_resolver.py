@@ -14,13 +14,15 @@ from skills.valuation.normalize.normalize import normalize_financials
 def test_analyze_files_gate_card_and_uses_dcf_directive(tmp_path) -> None:
     storage = LocalStorage(tmp_path)
     payload = resolver.analyze("AAPL", as_of=date(2026, 6, 30), storage=storage)
+    gate_card = storage.get_json("runs/AAPL/2026-06-30/gate_card.json")
+    method_directive = storage.get_json("runs/AAPL/2026-06-30/method_directive.json")
 
-    assert payload["gate_card"]["header"]["produced_by"] == "B-4"
-    assert payload["method_directive"]["header"]["produced_by"] == "B-6"
-    assert payload["method_directive"]["method"] == "DCF"
+    assert gate_card["header"]["produced_by"] == "B-4"
+    assert method_directive["header"]["produced_by"] == "B-6"
+    assert method_directive["method"] == "DCF"
     assert payload["valuation_range"]["method"] == "DCF"
-    assert storage.get_json("runs/AAPL/2026-06-30/gate_card.json")["ticker"] == "AAPL"
-    assert storage.get_json("runs/AAPL/2026-06-30/method_directive.json")["implemented"]
+    assert gate_card["ticker"] == "AAPL"
+    assert method_directive["implemented"]
 
 
 def test_resolver_does_not_call_dcf_for_deferred_optionality(monkeypatch, tmp_path) -> None:
@@ -39,9 +41,10 @@ def test_resolver_does_not_call_dcf_for_deferred_optionality(monkeypatch, tmp_pa
     monkeypatch.setattr(resolver, "build_dcf_artifacts", fail_dcf)
 
     payload = resolver.analyze("AAPL", as_of=date(2026, 6, 30), storage=storage)
+    method_directive = storage.get_json("runs/AAPL/2026-06-30/method_directive.json")
 
-    assert payload["method_directive"]["asset_class"] == "optionality"
-    assert payload["method_directive"]["method"] == "rNPV"
-    assert "valuation_deferred" in payload
-    assert "valuation_range" not in payload
-    assert storage.get_json("runs/AAPL/2026-06-30/method_directive.json")["method"] == "rNPV"
+    assert method_directive["asset_class"] == "optionality"
+    assert method_directive["method"] == "rNPV"
+    assert payload["valuation_range"]["method"] == "rNPV"
+    assert "scenario_values" in payload["valuation_range"]
+    assert method_directive["method"] == "rNPV"

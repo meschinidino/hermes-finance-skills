@@ -211,11 +211,10 @@ def test_analyze_go_branch_files_business_and_continues(tmp_path) -> None:
     )
 
     assert len(senior.calls) == 1
-    assert payload["business"]["ticker"] == "AAPL"
-    assert payload["early_gate"]["decision"] == "GO"
-    assert payload["gate_card"]["ticker"] == "AAPL"
-    assert storage.get_json("runs/AAPL/2026-06-30/business.json") == payload["business"]
-    assert storage.get_json("runs/AAPL/2026-06-30/business_early_gate.json") == payload["early_gate"]
+    assert payload["header"]["produced_by"] == "D-3"
+    assert storage.get_json("runs/AAPL/2026-06-30/business.json")["ticker"] == "AAPL"
+    assert storage.get_json("runs/AAPL/2026-06-30/business_early_gate.json")["decision"] == "GO"
+    assert storage.get_json("runs/AAPL/2026-06-30/gate_card.json")["ticker"] == "AAPL"
 
 
 def test_analyze_no_go_branch_halts_and_files_stop_artifact(tmp_path) -> None:

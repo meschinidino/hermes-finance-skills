@@ -16,20 +16,24 @@ def test_mrna_runs_rnpv_route_without_dcf_and_ratifies_once(tmp_path) -> None:
     storage = LocalStorage(tmp_path)
     senior = CountingSenior()
     payload = resolver.analyze("MRNA", as_of=RUN_DATE, storage=storage, senior=senior)
+    method_directive = storage.get_json("runs/MRNA/2026-07-01/method_directive.json")
+    scenarios = storage.get_json("runs/MRNA/2026-07-01/scenarios.json")
+    risk = storage.get_json("runs/MRNA/2026-07-01/risk.json")
+    senior_decision_package = storage.get_json("runs/MRNA/2026-07-01/senior_decision_package.json")
 
-    assert senior.ratify_calls == 1
-    assert payload["method_directive"]["asset_class"] == "optionality"
-    assert payload["method_directive"]["method"] == "rNPV"
-    assert payload["method_directive"]["routing_reason"] == "Optionality or pre-revenue economics require rNPV/SOTP routing rather than plain DCF."
-    assert payload["scenarios"]["status"] == "drafted"
-    assert payload["scenarios"]["scenarios"][0]["assumptions"][0]["driver"] == "rNPV_program_probability"
-    assert "valuation_range" not in payload
-    assert "expectations_line" not in payload
-    assert payload["risk"]["bear_case_value"]["derivation"].startswith("inputs: C-4 scenarios")
+    assert senior.ratify_calls == 2
+    assert method_directive["asset_class"] == "optionality"
+    assert method_directive["method"] == "rNPV"
+    assert method_directive["routing_reason"] == "Optionality or pre-revenue economics require rNPV/SOTP routing rather than plain DCF."
+    assert scenarios["status"] == "drafted"
+    assert scenarios["scenarios"][0]["assumptions"][0]["driver"] == "rNPV_program_probability"
+    assert payload["valuation_range"]["method"] == "rNPV"
+    assert payload["whats_priced_in"]["method"] == "rNPV"
+    assert risk["bear_case_value"]["derivation"].startswith("inputs: C-4 scenarios")
     assert payload["route_review_manifest"]["method"] == "rNPV"
     assert payload["route_review_manifest"]["required_context_sources"] == ["runs/MRNA/2026-07-01/method_directive.json"]
-    assert payload["senior_decision_package"]["ratification_summary"]["required_count"] > 0
-    assert payload["senior_decision_package"]["ratification_summary"]["ratified_as_is_rate"] == 1.0
+    assert senior_decision_package["ratification_summary"]["required_count"] > 0
+    assert senior_decision_package["ratification_summary"]["ratified_as_is_rate"] == 1.0
 
 
 def test_mrna_route_does_not_invoke_dcf(monkeypatch, tmp_path) -> None:
@@ -38,10 +42,11 @@ def test_mrna_route_does_not_invoke_dcf(monkeypatch, tmp_path) -> None:
 
     monkeypatch.setattr(resolver, "build_dcf_artifacts", fail_dcf)
 
-    payload = resolver.analyze("MRNA", as_of=RUN_DATE, storage=LocalStorage(tmp_path))
+    storage = LocalStorage(tmp_path)
+    payload = resolver.analyze("MRNA", as_of=RUN_DATE, storage=storage)
 
-    assert payload["method_directive"]["method"] == "rNPV"
-    assert "valuation_range" not in payload
+    assert storage.get_json("runs/MRNA/2026-07-01/method_directive.json")["method"] == "rNPV"
+    assert payload["valuation_range"]["method"] == "rNPV"
 
 
 def test_non_dcf_same_family_ratify_rejects_before_senior_call(tmp_path) -> None:

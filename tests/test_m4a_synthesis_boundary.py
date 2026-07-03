@@ -29,7 +29,8 @@ def test_synthesis_boundary_assembles_current_aapl_dcf_payload(tmp_path) -> None
         ),
     )
 
-    assert assembled == payload
+    assert payload["header"]["produced_by"] == "D-3"
+    assert storage.get_json(f"{run_dir}/final_handoff.json") == payload
     assert assembled["valuation_range"]["method"] == "DCF"
     assert assembled["expectations_line"]["frame"] == "DCF"
     assert assembled["senior_review_package"]["header"]["produced_by"] == "M3-7-review"
@@ -40,6 +41,7 @@ def test_synthesis_boundary_assembles_current_mrna_non_dcf_payload(tmp_path) -> 
     storage = LocalStorage(tmp_path)
     payload = resolver.analyze("MRNA", as_of=RUN_DATE, storage=storage)
     run_dir = "runs/MRNA/2026-07-02"
+    method_directive = storage.get_json(f"{run_dir}/method_directive.json")
 
     assembled = assemble_current_payload(
         storage,
@@ -48,11 +50,12 @@ def test_synthesis_boundary_assembles_current_mrna_non_dcf_payload(tmp_path) -> 
             ticker="MRNA",
             method="rNPV",
             route_manifest=ReviewSourceManifest.model_validate(payload["route_review_manifest"]),
-            valuation_deferred=payload["valuation_deferred"],
+            valuation_deferred=method_directive["fallback_behavior"],
         ),
     )
 
-    assert assembled == payload
+    assert payload["header"]["produced_by"] == "D-3"
+    assert storage.get_json(f"{run_dir}/final_handoff.json") == payload
     assert assembled["method_directive"]["method"] == "rNPV"
     assert assembled["valuation_deferred"]
     assert "valuation_range" not in assembled
@@ -100,6 +103,7 @@ def test_synthesis_boundary_non_dcf_does_not_require_dcf_artifacts(tmp_path) -> 
     storage = LocalStorage(tmp_path)
     payload = resolver.analyze("MRNA", as_of=RUN_DATE, storage=storage)
     run_dir = "runs/MRNA/2026-07-02"
+    method_directive = storage.get_json(f"{run_dir}/method_directive.json")
 
     assembled = assemble_current_payload(
         storage,
@@ -110,11 +114,11 @@ def test_synthesis_boundary_non_dcf_does_not_require_dcf_artifacts(tmp_path) -> 
             route_manifest=ReviewSourceManifest.model_validate(payload["route_review_manifest"]),
             valuation_range_path=f"{run_dir}/does_not_exist_valuation_range.json",
             expectations_line_path=f"{run_dir}/does_not_exist_expectations_line.json",
-            valuation_deferred=payload["valuation_deferred"],
+            valuation_deferred=method_directive["fallback_behavior"],
         ),
     )
 
-    assert assembled["valuation_deferred"] == payload["valuation_deferred"]
+    assert assembled["valuation_deferred"] == method_directive["fallback_behavior"]
     assert "valuation_range" not in assembled
     assert "expectations_line" not in assembled
 

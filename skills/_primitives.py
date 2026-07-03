@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, model_validator
 
 FilingForm = Literal["10-K", "10-Q", "DEF 14A", "Form 4", "computed", "external"]
 NumberKind = Literal["fact", "estimate", "judgment"]
-NumberUnit = Literal["USD_millions", "ratio", "percent", "shares", "USD_per_share", "years", "x"]
+NumberUnit = Literal["USD_millions", "ratio", "percent", "shares", "USD_per_share", "years", "days", "x"]
 Decision = Literal["ratified", "overturned"]
 
 

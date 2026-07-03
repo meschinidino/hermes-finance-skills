@@ -9,7 +9,7 @@ from typing import Any
 from skills.audit import audit_analyst_artifact, audit_artifact, audit_m1_handoff, audit_senior_decision_package, audit_senior_review_package
 from skills.config import load_config
 from skills.data.cost_of_capital.cost_of_capital import build_cost_of_capital_inputs
-from skills.data.edgar.edgar import fetch_edgar_facts
+from skills.data.edgar.edgar import enabled_tickers, fetch_edgar_facts
 from skills.data.price.price import fetch_price
 from skills.interfaces import LLM, PriceFeed, Senior, Storage
 from skills.accountant_artifacts import EdgarFacts
@@ -22,8 +22,11 @@ from skills.research.risk.risk import audit_risk_artifact, build_risk_artifact
 from skills.research.scenarios.scenarios import audit_scenario_set, build_scenario_set_artifact
 from skills.serialization import artifact_model_to_payload
 from skills.storage import LocalStorage
+from skills.synthesis.conviction.conviction import build_conviction
 from skills.synthesis.current_payload import CurrentSynthesisInput, assemble_current_payload
 from skills.synthesis.handoff.handoff import build_handoff
+from skills.synthesis.m4b_payload import SynthesisPayload
+from skills.synthesis.review_packager.review_packager import FinalLeanReturnedForRevision, build_final_lean_review_package, build_review_package
 from skills.valuation.dcf.dcf import build_dcf_artifacts
 from skills.valuation.method_router.method_router import route_method
 from skills.valuation.normalize.normalize import normalize_financials
@@ -316,7 +319,7 @@ def analyze(
     )
     audit_senior_decision_package(senior_decision_package, storage=active_storage, path=f"{run_dir}/senior_decision_package.json")
 
-    return assemble_current_payload(
+    current_payload = assemble_current_payload(
         active_storage,
         CurrentSynthesisInput(
             ticker=normalized_ticker,
@@ -335,6 +338,55 @@ def analyze(
             expectations_line_path=expectations_line_path,
             valuation_deferred=None if method_directive.method == "DCF" else method_directive.fallback_behavior,
         ),
+    )
+    synthesis_payload = SynthesisPayload.model_validate(current_payload)
+    conviction = build_conviction(synthesis_payload, storage=active_storage, run_dir=run_dir)
+    final_lean_review_package = build_final_lean_review_package(
+        conviction,
+        source_artifact=f"{run_dir}/conviction.json",
+        header=_header(config.schema_version, "D-2-lean-review"),
+    )
+    audit_senior_review_package(final_lean_review_package, storage=active_storage, path=f"{run_dir}/final_lean_review_package.json")
+    final_lean_decision_package = ratify_review_package(
+        final_lean_review_package,
+        senior=active_senior,
+        analyst_family=_declared_family(llm) if llm is not None else "offline-synthesis-drafter",
+        header=_header(config.schema_version, "D-2-lean-ratify"),
+    )
+    audit_senior_decision_package(final_lean_decision_package, storage=active_storage, path=f"{run_dir}/final_lean_decision_package.json")
+    final_lean_decision = final_lean_decision_package.decisions.get("final_lean")
+    if final_lean_decision is not None and final_lean_decision.decision == "overturned" and final_lean_decision.final is None:
+        returned_path = f"{run_dir}/final_lean_returned_for_revision.json"
+        returned = FinalLeanReturnedForRevision(
+            header=_header(config.schema_version, "D-2-lean-returned-for-revision"),
+            ticker=normalized_ticker,
+            as_of=run_date,
+            status="halted",
+            halt_reason="final_lean_overturned_without_replacement",
+            message="Senior overturned the final Buy/Watch/Pass lean without providing a replacement final.",
+            final_lean_review_package_path=f"{run_dir}/final_lean_review_package.json",
+            final_lean_decision_package_path=f"{run_dir}/final_lean_decision_package.json",
+            decided_by=final_lean_decision_package.decided_by,
+            decision="overturned",
+            replacement_final=None,
+        )
+        _put_m3_roundtrip(active_storage, returned_path, returned)
+        return {
+            "status": "halted",
+            "ticker": normalized_ticker,
+            "as_of": run_date.isoformat(),
+            "final_lean_review_package": active_storage.get_json(f"{run_dir}/final_lean_review_package.json"),
+            "final_lean_decision_package": active_storage.get_json(f"{run_dir}/final_lean_decision_package.json"),
+            "returned_for_revision": active_storage.get_json(returned_path),
+        }
+    return artifact_model_to_payload(
+        build_review_package(
+            synthesis_payload,
+            conviction,
+            storage=active_storage,
+            run_dir=run_dir,
+            lean_decision_package=final_lean_decision_package,
+        )
     )
 
 
@@ -491,7 +543,29 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Run the finance skill pack resolver.")
     parser.add_argument("ticker", help="US-listed ticker to analyze")
     args = parser.parse_args()
-    print(json.dumps(analyze(args.ticker), indent=2, sort_keys=True))
+    try:
+        print(json.dumps(analyze(args.ticker), indent=2, sort_keys=True))
+    except ValueError as exc:
+        error = str(exc)
+        if not error.startswith("unknown_ticker:"):
+            raise
+        requested_ticker = error.split(":", 1)[1].upper()
+        print(
+            json.dumps(
+                {
+                    "status": "rejected",
+                    "error": {
+                        "code": "unknown_ticker",
+                        "requested_ticker": requested_ticker,
+                        "enabled_tickers": enabled_tickers(),
+                        "message": "ticker not enabled in this deployment",
+                    },
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        raise SystemExit(1) from None
 
 
 if __name__ == "__main__":
