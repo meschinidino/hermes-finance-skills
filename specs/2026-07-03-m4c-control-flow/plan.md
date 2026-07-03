@@ -70,7 +70,7 @@ Rules:
 4. All model identity comparisons must normalize by stripping whitespace and lowercasing before matching. The expected normalized Senior model is `deepseek-v4-pro`.
 5. The adapter must reject configured aliases `deepseek-chat` and `deepseek-reasoner` wherever they appear as deployment, model, documented model, or family config values, after applying the same strip-and-lowercase normalization.
 6. The adapter must capture response metadata verbatim when the provider returns it. Azure may return `DeepSeek-V4-Pro` or the deployment name rather than DeepSeek's lowercase public model string; record that value as `response_model`.
-7. TODO: confirm from a live API response whether the response `model` field returns `DeepSeek-V4-Pro` or the deployment name.
+7. Live validation confirmed the response `model` field returns `DeepSeek-V4-Pro`; record that value verbatim as `response_model`.
 8. If response metadata is absent, the adapter may fall back only to the actual adapter request identity and verified deployment configuration, never to a user-supplied display label.
 9. If response metadata contradicts the configured identity after normalization, the adapter must fail closed. Returning the deployment name is not a contradiction when it matches `SENIOR_DEPLOYMENT_NAME`.
 10. The offline Senior must expose provider/model-family/model identity as offline/test identity, for example provider `offline`, model `offline-senior`, model_family `offline`, adapter `offline`.

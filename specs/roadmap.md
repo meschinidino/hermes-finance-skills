@@ -85,6 +85,8 @@ Replace the accretion-payload assembly with a real synthesis boundary. Zero new 
 ### M4c — Control flow
 Routing table, escalation matrix, parallelism, KILL halt, revisit triggers, C-5 `pass_falsifiers` wired into Handoff revisit triggers, and independence checks upgraded from declared labels to actual provider/model identity.
 **Done:** a kill memo is produced correctly and escalations route as specified.
+**Spec:** `specs/2026-07-03-m4c-control-flow/`
+**Status:** M4c complete (identity-backed Senior metadata, Azure Foundry Senior selector, route manifest audit, canonical KillMemo halts, final Handoff signing metadata, canonical `revisit_triggers`, and resolver route/escalation documentation). Validated with `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest`, `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync python -m resolver AAPL`, and `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync python -m resolver MRNA`. Live Azure Foundry validation is pending credentials.
 
 ### M5 — Calibration + performance reviews
 `D-4 Calibration` analytics (hit-rate by conviction band, directional bias, leak-by-phase) + the routing-correctness and escalation-correctness checks.

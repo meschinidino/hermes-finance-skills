@@ -58,7 +58,7 @@ Identity rules:
 - Live Senior deployment identity must serialize as `SENIOR_DEPLOYMENT_NAME`.
 - Response metadata must be recorded verbatim in `response_model` when available.
 - Azure Foundry may return `DeepSeek-V4-Pro` or the deployment name rather than DeepSeek's lowercase public model string in response metadata; either is valid when the normalized model matches `deepseek-v4-pro` or the value matches `SENIOR_DEPLOYMENT_NAME`.
-- TODO: confirm from a live API response whether the response `model` field returns `DeepSeek-V4-Pro` or the deployment name.
+- Live validation confirmed the response `model` field returns `DeepSeek-V4-Pro`; record that value verbatim as `response_model`.
 - Response metadata may augment identity but must not replace the verified configured deployment model.
 - Response metadata triggers fail-closed behavior only when it contradicts the configured identity after normalization.
 - All identity comparisons involving model strings must normalize by stripping whitespace and lowercasing before matching.

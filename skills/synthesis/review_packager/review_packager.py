@@ -89,7 +89,16 @@ class FinalHandoff(BaseModel):
     edge: EdgeStatement
     sizing_inputs: SizingInputs
     confidence_and_gaps: dict[str, str | list[str]]
+    revisit_triggers: list[str]
     revisit_if: list[str]
+    final_lean_signed_by: str
+    final_lean_signed_by_provider: str
+    final_lean_signed_by_deployment: str | None = None
+    final_lean_signed_by_model: str
+    final_lean_signed_by_model_family: str
+    final_lean_signed_by_adapter: str
+    final_lean_signed_by_response_model: str | None = None
+    final_lean_signed_by_response_id: str | None = None
     data_room: dict[str, str | list[str]]
     senior_review_package: dict
     senior_decision_package: dict
@@ -105,8 +114,19 @@ class FinalHandoff(BaseModel):
             raise ValueError("final handoff lean cannot reuse D-2 draft after Senior overturned it")
         if len(self.cruxes) != 3:
             raise ValueError("final handoff requires exactly three cruxes")
-        if not self.revisit_if:
+        if not self.revisit_triggers:
             raise ValueError("final handoff requires revisit triggers")
+        if self.revisit_if != self.revisit_triggers:
+            raise ValueError("final handoff revisit_if must mirror canonical revisit_triggers")
+        for field_name in (
+            "final_lean_signed_by",
+            "final_lean_signed_by_provider",
+            "final_lean_signed_by_model",
+            "final_lean_signed_by_model_family",
+            "final_lean_signed_by_adapter",
+        ):
+            if not str(getattr(self, field_name) or "").strip():
+                raise ValueError(f"final handoff requires {field_name}")
         required_gap_keys = {"least_sure_about", "couldnt_verify", "would_raise_conviction"}
         if set(self.confidence_and_gaps) != required_gap_keys:
             raise ValueError("final handoff confidence_and_gaps is incomplete")
@@ -167,6 +187,7 @@ def build_review_package(
         cruxes=cruxes,
         catalysts=_catalysts(payload),
     )
+    revisit_triggers = _revisit_triggers(payload, cruxes)
     handoff = FinalHandoff(
         header=Header(schema_version=payload.schema_version, produced_by="D-3", produced_at=produced_at),
         ticker=payload.ticker,
@@ -185,7 +206,16 @@ def build_review_package(
         edge=edge,
         sizing_inputs=conviction.sizing_inputs,
         confidence_and_gaps=conviction.confidence_and_gaps,
-        revisit_if=_revisit_if(payload, cruxes),
+        revisit_triggers=revisit_triggers,
+        revisit_if=revisit_triggers,
+        final_lean_signed_by=lean_decision_package.decided_by,
+        final_lean_signed_by_provider=lean_decision_package.decided_by_provider,
+        final_lean_signed_by_deployment=lean_decision_package.decided_by_deployment,
+        final_lean_signed_by_model=lean_decision_package.decided_by_model,
+        final_lean_signed_by_model_family=lean_decision_package.decided_by_model_family,
+        final_lean_signed_by_adapter=lean_decision_package.decided_by_adapter,
+        final_lean_signed_by_response_model=lean_decision_package.decided_by_response_model,
+        final_lean_signed_by_response_id=lean_decision_package.decided_by_response_id,
         data_room=_data_room(run_dir, payload),
         senior_review_package=artifact_model_to_payload(payload.senior_review_package),
         senior_decision_package=artifact_model_to_payload(payload.senior_decision_package),
@@ -343,11 +373,26 @@ def _thesis(payload: SynthesisPayload) -> str:
     return f"{business} {moat} {edge}"
 
 
-def _revisit_if(payload: SynthesisPayload, cruxes: list[Crux]) -> list[str]:
+def _revisit_triggers(payload: SynthesisPayload, cruxes: list[Crux]) -> list[str]:
     kill_metric = _final_or_draft(payload.risk.kill_metric)
-    triggers = [f"{crux.metric} {crux.threshold}" for crux in cruxes]
+    triggers = _pass_falsifier_triggers(payload)
+    triggers.extend(f"{crux.metric} {crux.threshold}" for crux in cruxes)
     if isinstance(kill_metric, KillMetricDraft):
         triggers.append(f"{kill_metric.metric} {kill_metric.threshold_direction} {kill_metric.threshold_value.value:g}")
+    return list(dict.fromkeys(triggers))
+
+
+def _pass_falsifier_triggers(payload: SynthesisPayload) -> list[str]:
+    draft = _final_or_draft(payload.edge_cruxes.cruxes) if payload.edge_cruxes.cruxes is not None else []
+    if not isinstance(draft, list):
+        return []
+    triggers = []
+    for item in draft:
+        if not isinstance(item, CruxDraft) or item.kind != "pass_falsifier":
+            continue
+        triggers.append(
+            f"pass_falsifier:{item.metric} {item.threshold_direction} {item.threshold_value} by {item.check_by.isoformat()}"
+        )
     return triggers
 
 

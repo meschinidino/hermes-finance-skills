@@ -51,10 +51,14 @@ def test_mrna_route_does_not_invoke_dcf(monkeypatch, tmp_path) -> None:
 
 def test_non_dcf_same_family_ratify_rejects_before_senior_call(tmp_path) -> None:
     senior = SameRatifyFamilySenior()
+    storage = LocalStorage(tmp_path)
 
-    with pytest.raises(ValueError, match="must differ before ratify"):
-        resolver.analyze("MRNA", as_of=RUN_DATE, storage=LocalStorage(tmp_path), senior=senior)
+    payload = resolver.analyze("MRNA", as_of=RUN_DATE, storage=storage, senior=senior)
 
+    assert payload["status"] == "halted"
+    assert payload["kill_memo"]["halt_kind"] == "identity_audit_violation"
+    assert payload["kill_memo"]["gate"] == "consolidated_ratification"
+    assert storage.get_json(payload["kill_memo_path"]) == payload["kill_memo"]
     assert senior.ratify_calls == 0
 
 

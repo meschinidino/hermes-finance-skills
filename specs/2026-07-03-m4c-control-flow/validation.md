@@ -143,7 +143,7 @@ Required live run assertions:
 - Actual response metadata was captured verbatim in `response_model` when available.
 - Response metadata returning `DeepSeek-V4-Pro` was accepted after normalization.
 - Response metadata returning the deployment name was accepted when it matched `SENIOR_DEPLOYMENT_NAME`.
-- TODO: confirm from a live API response whether the response `model` field returns `DeepSeek-V4-Pro` or the deployment name.
+- Live validation confirmed the response `model` field returns `DeepSeek-V4-Pro`; record that value verbatim as `response_model`.
 - Senior identity metadata was persisted in decision packages.
 - Final Handoff signing metadata includes provider/deployment/model-family/model.
 - `ratified_as_is_rate` is reported for the consolidated M3.7 package.
