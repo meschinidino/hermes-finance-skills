@@ -8,6 +8,14 @@ from typing import Any, Literal, Sequence
 from pydantic import BaseModel, ConfigDict, model_validator
 
 from skills._primitives import Header, Provenance, Ratifiable
+from skills.control_flow import (
+    AnalystIdentity,
+    IdentityAuditError,
+    SeniorIdentity,
+    analyst_identity_from_adapter,
+    assert_independent,
+    senior_identity_from_adapter,
+)
 from skills.interfaces import Senior
 from skills.serialization import artifact_model_to_payload
 
@@ -156,6 +164,13 @@ class SeniorDecisionPackage(M3Model):
     ticker: str
     as_of: date
     decided_by: str
+    decided_by_provider: str
+    decided_by_deployment: str | None = None
+    decided_by_model: str
+    decided_by_model_family: str
+    decided_by_adapter: str
+    decided_by_response_model: str | None = None
+    decided_by_response_id: str | None = None
     required_item_ids: list[str]
     decisions: dict[str, SeniorDecision]
     outcomes: dict[str, RatificationOutcome]
@@ -170,6 +185,7 @@ class SeniorDecisionPackage(M3Model):
     def fill_ratification_outcomes(cls, data: Any) -> Any:
         if not isinstance(data, dict) or "decisions" not in data:
             return data
+        data = _fill_senior_identity_payload(dict(data))
         required_item_ids = [str(item_id) for item_id in data.get("required_item_ids", [])]
         decisions_payload = data.get("decisions") or {}
         if not isinstance(decisions_payload, dict):
@@ -196,6 +212,9 @@ class SeniorDecisionPackage(M3Model):
     def validate_decisions(self) -> SeniorDecisionPackage:
         if not self.decided_by:
             raise ValueError("senior decision package requires decided_by")
+        for field_name in ("decided_by_provider", "decided_by_model", "decided_by_model_family", "decided_by_adapter"):
+            if not str(getattr(self, field_name) or "").strip():
+                raise ValueError(f"senior decision package requires {field_name}")
         missing = sorted(set(self.required_item_ids) - set(self.decisions))
         if missing:
             raise ValueError(f"senior decisions missing required item ids: {', '.join(missing)}")
@@ -340,14 +359,18 @@ def ratify_review_package(
     package: SeniorReviewPackage,
     *,
     senior: Senior,
-    analyst_family: str,
+    analyst_family: str | None = None,
     header: Header,
+    analyst_identity: AnalystIdentity | None = None,
 ) -> SeniorDecisionPackage:
-    senior_family = _declared_family(senior)
-    if not analyst_family or not senior_family:
-        raise ValueError("analyst and senior adapters must declare model families before ratify")
-    if analyst_family == senior_family:
-        raise ValueError(f"analyst and senior model families must differ before ratify: {analyst_family}")
+    analyst_actual = analyst_identity or analyst_identity_from_adapter(None, analyst_family)
+    senior_actual = senior_identity_from_adapter(senior)
+    try:
+        assert_independent(analyst_actual, senior_actual)
+    except IdentityAuditError as exc:
+        raise IdentityAuditError(
+            f"analyst and senior identities must differ before ratify: {analyst_actual.model_family}"
+        ) from exc
     required_item_ids = [item.id for item in package.review_items if item.required]
     response = senior.ratify(
         {
@@ -366,6 +389,7 @@ def ratify_review_package(
         or getattr(senior, "senior_handle", None)
         or "unknown-senior"
     )
+    senior_actual = senior_identity_from_adapter(senior, response)
     decisions = {
         str(item_id): SeniorDecision.model_validate(decision_payload)
         for item_id, decision_payload in decisions_payload.items()
@@ -377,6 +401,13 @@ def ratify_review_package(
         ticker=package.ticker,
         as_of=package.as_of,
         decided_by=decided_by,
+        decided_by_provider=senior_actual.provider,
+        decided_by_deployment=senior_actual.deployment,
+        decided_by_model=senior_actual.model,
+        decided_by_model_family=senior_actual.model_family,
+        decided_by_adapter=senior_actual.adapter,
+        decided_by_response_model=senior_actual.response_model,
+        decided_by_response_id=senior_actual.response_id,
         required_item_ids=required_item_ids,
         decisions=decisions,
         outcomes=outcomes,
@@ -394,6 +425,41 @@ def _declared_family(adapter: Any) -> str | None:
         if isinstance(value, str) and value.strip():
             return value.strip()
     return None
+
+
+def _fill_senior_identity_payload(data: dict[str, Any]) -> dict[str, Any]:
+    if all(
+        key in data
+        for key in (
+            "decided_by_provider",
+            "decided_by_model",
+            "decided_by_model_family",
+            "decided_by_adapter",
+        )
+    ):
+        return data
+    identity_payload = data.get("senior_identity")
+    if isinstance(identity_payload, dict):
+        identity = SeniorIdentity.model_validate(identity_payload)
+    else:
+        decided_by = str(data.get("decided_by") or "offline-senior")
+        identity = SeniorIdentity(
+            provider="offline",
+            model=decided_by,
+            model_family=decided_by,
+            adapter="offline",
+            metadata_source="legacy-offline",
+        )
+    return {
+        **data,
+        "decided_by_provider": data.get("decided_by_provider", identity.provider),
+        "decided_by_deployment": data.get("decided_by_deployment", identity.deployment),
+        "decided_by_model": data.get("decided_by_model", identity.model),
+        "decided_by_model_family": data.get("decided_by_model_family", identity.model_family),
+        "decided_by_adapter": data.get("decided_by_adapter", identity.adapter),
+        "decided_by_response_model": data.get("decided_by_response_model", identity.response_model),
+        "decided_by_response_id": data.get("decided_by_response_id", identity.response_id),
+    }
 
 
 def _iter_analyst_drafts(value: Any, path: str) -> list[tuple[str, AnalystDraft]]:

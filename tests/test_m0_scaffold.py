@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import json
+import subprocess
+import sys
 import tempfile
 import unittest
 from datetime import date, datetime, timezone
@@ -70,15 +73,20 @@ class M0ScaffoldTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             storage = LocalStorage(tmp)
             result = analyze("aapl", as_of=date(2026, 6, 29), storage=storage)
+            run_dir = Path(tmp) / "runs/AAPL/2026-06-29"
+            m1_handoff = storage.get_json("runs/AAPL/2026-06-29/handoff.json")
 
-            self.assertEqual(result["status"], "m1_walking_skeleton")
+            self.assertEqual(m1_handoff["status"], "m1_walking_skeleton")
             self.assertEqual(result["ticker"], "AAPL")
-            self.assertTrue((Path(tmp) / "runs/AAPL/2026-06-29/spine.json").exists())
-            self.assertTrue((Path(tmp) / "runs/AAPL/2026-06-29/handoff.json").exists())
-            self.assertTrue((Path(tmp) / "runs/AAPL/2026-06-29/valuation_range.json").exists())
-            self.assertTrue((Path(tmp) / "runs/AAPL/2026-06-29/expectations_line.json").exists())
+            self.assertEqual(result["header"]["produced_by"], "D-3")
+            self.assertTrue((run_dir / "spine.json").exists())
+            self.assertTrue((run_dir / "handoff.json").exists())
+            self.assertTrue((run_dir / "valuation_range.json").exists())
+            self.assertTrue((run_dir / "expectations_line.json").exists())
+            self.assertTrue((run_dir / "conviction.json").exists())
+            self.assertTrue((run_dir / "final_handoff.json").exists())
             self.assertIsNotNone(result["valuation_range"])
-            self.assertIsNotNone(result["expectations_line"])
+            self.assertIsNotNone(result["whats_priced_in"])
 
     def test_analyze_price_feed_down_still_files_m2a_artifacts(self) -> None:
         class BadFeed:
@@ -87,17 +95,46 @@ class M0ScaffoldTest(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             storage = LocalStorage(tmp)
-            result = analyze("aapl", as_of=date(2026, 6, 29), storage=storage, price_feed=BadFeed())
             run_dir = Path(tmp) / "runs/AAPL/2026-06-29"
 
-            self.assertIn("book_equity_weighting_fallback", result["flags"])
+            with self.assertRaisesRegex(ValueError, "conviction requires filed price"):
+                analyze("aapl", as_of=date(2026, 6, 29), storage=storage, price_feed=BadFeed())
+
             self.assertTrue((run_dir / "valuation_range.json").exists())
             self.assertTrue((run_dir / "expectations_line.json").exists())
-            self.assertIsNotNone(result["valuation_range"])
-            self.assertIsNotNone(result["expectations_line"])
-            self.assertIn("book_equity_weighting_fallback", result["valuation_range"]["flags"])
-            self.assertIn("reverse_dcf_blocked_no_observed_price", result["expectations_line"]["flags"])
-            self.assertTrue(result["expectations_line"]["reverse_band_results"]["low"]["blocked"])
+            valuation_range = storage.get_json("runs/AAPL/2026-06-29/valuation_range.json")
+            expectations_line = storage.get_json("runs/AAPL/2026-06-29/expectations_line.json")
+            self.assertIn("book_equity_weighting_fallback", valuation_range["flags"])
+            self.assertIn("reverse_dcf_blocked_no_observed_price", expectations_line["flags"])
+            self.assertTrue(expectations_line["reverse_band_results"]["low"]["blocked"])
+
+    def test_unknown_ticker_cli_rejects_without_traceback_or_run_artifacts(self) -> None:
+        repo_root = Path(__file__).resolve().parents[1]
+        result = subprocess.run(
+            [sys.executable, "-m", "resolver", "SONY"],
+            cwd=repo_root,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertNotIn("Traceback", result.stdout)
+        self.assertNotIn("Traceback", result.stderr)
+        self.assertEqual(result.stderr, "")
+        self.assertFalse((repo_root / "data/runs/SONY").exists())
+        self.assertEqual(
+            json.loads(result.stdout),
+            {
+                "status": "rejected",
+                "error": {
+                    "code": "unknown_ticker",
+                    "requested_ticker": "SONY",
+                    "enabled_tickers": ["AAPL", "MRNA"],
+                    "message": "ticker not enabled in this deployment",
+                },
+            },
+        )
 
 
 if __name__ == "__main__":

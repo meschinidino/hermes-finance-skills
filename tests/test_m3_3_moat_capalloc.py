@@ -256,12 +256,11 @@ def test_analyze_go_branch_files_moat_and_capalloc_without_second_senior_call(tm
     )
 
     assert len(senior.calls) == 1
-    assert payload["moat"]["header"]["produced_by"] == "C-2"
-    assert payload["capalloc"]["header"]["produced_by"] == "C-3"
-    assert payload["moat_review_package"]["review_items"][0]["decision"] is None
-    assert payload["capalloc_review_package"]["review_items"][0]["decision"] is None
-    assert storage.get_json("runs/AAPL/2026-06-30/moat.json") == payload["moat"]
-    assert storage.get_json("runs/AAPL/2026-06-30/capalloc.json") == payload["capalloc"]
+    assert payload["header"]["produced_by"] == "D-3"
+    assert storage.get_json("runs/AAPL/2026-06-30/moat.json")["header"]["produced_by"] == "C-2"
+    assert storage.get_json("runs/AAPL/2026-06-30/capalloc.json")["header"]["produced_by"] == "C-3"
+    assert storage.get_json("runs/AAPL/2026-06-30/moat_review_package.json")["review_items"][0]["decision"] is None
+    assert storage.get_json("runs/AAPL/2026-06-30/capalloc_review_package.json")["review_items"][0]["decision"] is None
 
 
 def test_analyze_no_go_branch_does_not_run_moat_or_capalloc(tmp_path) -> None:

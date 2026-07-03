@@ -79,10 +79,14 @@ Replace the accretion-payload assembly with a real synthesis boundary. Zero new 
 ### M4b — Synthesis skills
 `D-2 Conviction` and `D-3 Review Packager`, built on top of the stable boundary from M4a.
 **Done:** `analyze()` produces a complete, Senior-signed Handoff.
+**Spec:** `specs/2026-07-03-m4b-synthesis-skills/`
+**Status:** M4b complete (typed SynthesisPayload wrapper, D-2 Conviction, D-3 Review Packager, filed/reloadable conviction and final handoff artifacts, DCF and non-DCF synthesis paths, and M4b fail-closed tests). Validated with `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest`, `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync python -m resolver AAPL`, and `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync python -m resolver MRNA`.
 
 ### M4c — Control flow
 Routing table, escalation matrix, parallelism, KILL halt, revisit triggers, C-5 `pass_falsifiers` wired into Handoff revisit triggers, and independence checks upgraded from declared labels to actual provider/model identity.
 **Done:** a kill memo is produced correctly and escalations route as specified.
+**Spec:** `specs/2026-07-03-m4c-control-flow/`
+**Status:** M4c complete (identity-backed Senior metadata, Azure Foundry Senior selector, route manifest audit, canonical KillMemo halts, final Handoff signing metadata, canonical `revisit_triggers`, and resolver route/escalation documentation). Validated with `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest`, `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync python -m resolver AAPL`, and `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync python -m resolver MRNA`. Live Azure Foundry validation is pending credentials.
 
 ### M5 — Calibration + performance reviews
 `D-4 Calibration` analytics (hit-rate by conviction band, directional bias, leak-by-phase) + the routing-correctness and escalation-correctness checks.

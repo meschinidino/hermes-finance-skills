@@ -10,6 +10,7 @@ import pytest
 from resolver import GateWiringError, _run_business_early_gate, analyze
 from skills.audit import AuditError, audit_analyst_artifact
 from skills.bundle_validation import BundleValidationError, validate_skill_bundle
+from skills.control_flow import analyst_identity_from_adapter
 from skills.data.edgar.edgar import fetch_edgar_facts
 from skills.analyst_artifacts import AnalystDraft, EvidenceRef
 from skills.research.business.business import build_business_artifact
@@ -161,7 +162,7 @@ def test_same_family_gate_wiring_rejects_before_senior_call(tmp_path) -> None:
             as_of=date(2026, 6, 30),
             schema_version="1.0",
             senior=senior,
-            analyst_family="same-family",
+            analyst_identity=analyst_identity_from_adapter(None, "same-family"),
             storage=storage,
             run_dir="runs/AAPL/2026-06-30",
         )
@@ -186,7 +187,7 @@ def test_different_family_gate_calls_senior_once_and_files_result(tmp_path) -> N
         as_of=date(2026, 6, 30),
         schema_version="1.0",
         senior=senior,
-        analyst_family="analyst-family",
+        analyst_identity=analyst_identity_from_adapter(None, "analyst-family"),
         storage=storage,
         run_dir="runs/AAPL/2026-06-30",
     )
@@ -211,11 +212,10 @@ def test_analyze_go_branch_files_business_and_continues(tmp_path) -> None:
     )
 
     assert len(senior.calls) == 1
-    assert payload["business"]["ticker"] == "AAPL"
-    assert payload["early_gate"]["decision"] == "GO"
-    assert payload["gate_card"]["ticker"] == "AAPL"
-    assert storage.get_json("runs/AAPL/2026-06-30/business.json") == payload["business"]
-    assert storage.get_json("runs/AAPL/2026-06-30/business_early_gate.json") == payload["early_gate"]
+    assert payload["header"]["produced_by"] == "D-3"
+    assert storage.get_json("runs/AAPL/2026-06-30/business.json")["ticker"] == "AAPL"
+    assert storage.get_json("runs/AAPL/2026-06-30/business_early_gate.json")["decision"] == "GO"
+    assert storage.get_json("runs/AAPL/2026-06-30/gate_card.json")["ticker"] == "AAPL"
 
 
 def test_analyze_no_go_branch_halts_and_files_stop_artifact(tmp_path) -> None:
@@ -241,29 +241,38 @@ def test_analyze_no_go_branch_halts_and_files_stop_artifact(tmp_path) -> None:
 
 def test_analyze_same_family_rejects_before_senior_gate(tmp_path) -> None:
     senior = CountingSenior(senior_handle="shared-family")
+    storage = LocalStorage(tmp_path)
 
-    with pytest.raises(GateWiringError):
-        analyze(
-            "AAPL",
-            as_of=date(2026, 6, 30),
-            storage=LocalStorage(tmp_path),
-            llm=FakeLLM(model_handle="shared-family"),
-            senior=senior,
-        )
+    payload = analyze(
+        "AAPL",
+        as_of=date(2026, 6, 30),
+        storage=storage,
+        llm=FakeLLM(model_handle="shared-family"),
+        senior=senior,
+    )
 
+    assert payload["status"] == "halted"
+    assert payload["kill_memo"]["halt_kind"] == "identity_audit_violation"
+    assert payload["kill_memo"]["gate"] == "business_early_gate"
+    assert storage.get_json(payload["kill_memo_path"]) == payload["kill_memo"]
     assert senior.calls == []
 
 
-def test_analyze_rejects_missing_llm_family_before_senior_gate(tmp_path) -> None:
+def test_analyze_missing_llm_identity_files_identity_kill_memo(tmp_path) -> None:
     senior = CountingSenior(senior_handle="senior-family")
+    storage = LocalStorage(tmp_path)
 
-    with pytest.raises(GateWiringError, match="declare model families"):
-        analyze(
-            "AAPL",
-            as_of=date(2026, 6, 30),
-            storage=LocalStorage(tmp_path),
-            llm=UnidentifiedLLM(),
-            senior=senior,
-        )
+    payload = analyze(
+        "AAPL",
+        as_of=date(2026, 6, 30),
+        storage=storage,
+        llm=UnidentifiedLLM(),
+        senior=senior,
+    )
 
+    assert payload["status"] == "halted"
+    assert payload["kill_memo_path"] == "runs/AAPL/2026-06-30/kill_memo.json"
+    assert payload["kill_memo"]["halt_kind"] == "identity_audit_violation"
+    assert payload["kill_memo"]["gate"] == "business_early_gate"
+    assert storage.get_json(payload["kill_memo_path"]) == payload["kill_memo"]
     assert senior.calls == []

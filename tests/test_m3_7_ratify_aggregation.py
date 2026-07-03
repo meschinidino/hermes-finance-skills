@@ -26,7 +26,7 @@ def test_resolver_builds_consolidated_review_and_decision_package(tmp_path) -> N
     decisions = payload["senior_decision_package"]
     required_ids = [item["id"] for item in review["review_items"] if item["required"]]
 
-    assert senior.ratify_calls == 1
+    assert senior.ratify_calls == 2
     assert review["header"]["produced_by"] == "M3-7-review"
     assert decisions["header"]["produced_by"] == "M3-7-ratify"
     assert decisions["required_item_ids"] == required_ids
@@ -291,8 +291,9 @@ class MixedOutcomeSenior:
             item_id: {"decision": "ratified", "final": None, "rationale": f"accepted:{item_id}"}
             for item_id in item_ids
         }
-        decisions[item_ids[0]] = {"decision": "overturned", "final": "senior modified value", "rationale": "modified"}
-        decisions[item_ids[1]] = {"decision": "overturned", "final": None, "rationale": "rejected"}
+        if len(item_ids) > 1:
+            decisions[item_ids[0]] = {"decision": "overturned", "final": "senior modified value", "rationale": "modified"}
+            decisions[item_ids[1]] = {"decision": "overturned", "final": None, "rationale": "rejected"}
         return {"decided_by": "mixed-senior", "decisions": decisions}
 
 

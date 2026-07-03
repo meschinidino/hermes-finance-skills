@@ -66,6 +66,24 @@ class EdgeCruxesArtifact(M3Model):
     cruxes: AnalystDraft | None = None
     source_evidence_summary: dict[str, str]
 
+    @model_validator(mode="before")
+    @classmethod
+    def rehydrate_nested_drafts(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        data = dict(data)
+        if isinstance(data.get("cruxes"), dict):
+            draft = data["cruxes"].get("draft")
+            if isinstance(draft, list):
+                data["cruxes"] = {
+                    **data["cruxes"],
+                    "draft": [
+                        item if isinstance(item, CruxDraft) else CruxDraft.model_validate(item)
+                        for item in draft
+                    ],
+                }
+        return data
+
     @model_validator(mode="after")
     def validate_required_content(self) -> EdgeCruxesArtifact:
         required_paths = {

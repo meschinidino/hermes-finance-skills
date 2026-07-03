@@ -96,6 +96,11 @@ def resolve_cik(ticker: str, *, fixture_dir: Path = FIXTURE_DIR) -> str:
     raise ValueError(f"unknown_ticker:{ticker}")
 
 
+def enabled_tickers(*, fixture_dir: Path = FIXTURE_DIR) -> list[str]:
+    raw = _load_json(fixture_dir / "company_tickers.json")
+    return sorted(record["ticker"].upper() for record in raw.values())
+
+
 def _available_years(raw: dict[str, Any]) -> list[str]:
     values = _tag_values(raw, "us-gaap:OperatingIncomeLoss", "USD")
     years = sorted({int(item["fy"]) for item in values if item.get("form") == "10-K" and item.get("fp") == "FY"})

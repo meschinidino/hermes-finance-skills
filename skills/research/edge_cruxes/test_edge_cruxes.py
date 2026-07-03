@@ -235,12 +235,17 @@ def test_duplicate_cruxes_are_rejected(tmp_path) -> None:
 
 
 def test_resolver_reaches_edge_cruxes_on_go_path_and_collects_for_ratification(tmp_path) -> None:
-    payload = analyze("AAPL", as_of=RUN_DATE, storage=LocalStorage(tmp_path))
+    storage = LocalStorage(tmp_path)
+    payload = analyze("AAPL", as_of=RUN_DATE, storage=storage)
+    edge_cruxes = storage.get_json(f"{RUN_DIR}/edge_cruxes.json")
+    review_package = storage.get_json(f"{RUN_DIR}/edge_cruxes_review_package.json")
+    decision_package = storage.get_json(f"{RUN_DIR}/senior_decision_package.json")
 
-    assert payload["edge_cruxes"]["header"]["produced_by"] == "C-5"
-    assert len(payload["edge_cruxes"]["cruxes"]["draft"]) == 3
-    assert all(item["decision"] is None for item in payload["edge_cruxes_review_package"]["review_items"])
-    assert payload["senior_decision_package"]["header"]["produced_by"] == "M3-7-ratify"
+    assert payload["header"]["produced_by"] == "D-3"
+    assert edge_cruxes["header"]["produced_by"] == "C-5"
+    assert len(edge_cruxes["cruxes"]["draft"]) == 3
+    assert all(item["decision"] is None for item in review_package["review_items"])
+    assert decision_package["header"]["produced_by"] == "M3-7-ratify"
 
 
 def test_resolver_no_go_stops_before_edge_cruxes(tmp_path) -> None:
