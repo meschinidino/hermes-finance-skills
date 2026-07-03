@@ -1,0 +1,70 @@
+{
+  "premortem": {
+    "draft": "Over the next two fiscal years the investment loses money if gross bookings growth slows while insurance, legal, and labor-classification costs rise, compressing incremental margins before the platform can prove durable operating leverage.",
+    "source_label": "C-4 DCF scenarios and C-5 edge cruxes",
+    "excerpt_or_summary": "Scenario and edge-crux artifacts identify growth conversion, regulatory cost, insurance cost, and incentive intensity as the key risks.",
+    "source_key": "edge_cruxes"
+  },
+  "bear_case_narrative": {
+    "draft": "A credible short seller's bear case is that Uber is a lower-quality marketplace than headline growth suggests: because local competition, incentives, insurance, and labor rules consume scale benefits, DCF margins are too high and downside can persist as estimates reset over several reporting periods.",
+    "source_label": "C-4 DCF scenarios",
+    "excerpt_or_summary": "The filed bear scenario quantifies lower value when growth and margin assumptions are weaker.",
+    "source_key": "scenarios"
+  },
+  "modellable_risks": [
+    {
+      "risk": "Gross bookings and trips grow below the filed base DCF path.",
+      "impact": "high",
+      "likelihood": "med",
+      "modeled_effect": "Lower revenue growth flows through the DCF revenue driver and reduces per-share value.",
+      "source_label": "C-4 DCF scenarios",
+      "excerpt_or_summary": "The scenario artifact binds bear/base/bull values to revenue-growth and margin assumptions.",
+      "source_key": "scenarios"
+    },
+    {
+      "risk": "Insurance, legal, or labor costs compress incremental operating margins.",
+      "impact": "high",
+      "likelihood": "med",
+      "modeled_effect": "Lower NOPAT margin reduces the DCF value and conviction score.",
+      "source_label": "C-2 moat and C-3 capital allocation",
+      "excerpt_or_summary": "Moat and capital allocation evidence frame regulation, insurance, and incentive intensity as margin-durability tests.",
+      "source_key": "moat"
+    }
+  ],
+  "tail_risks": [
+    {
+      "risk": "A major jurisdiction forces a worker-classification or marketplace-rule change that resets unit economics.",
+      "why_not_modelled": "The timing, jurisdictional scope, appeal path, and pass-through economics are discontinuous rather than responsibly estimable with a simple probability-weighted margin haircut.",
+      "monitoring_signal": "Final adverse ruling, settlement, ballot measure, or legislation in a major profit pool.",
+      "source_label": "C-1 business and C-5 edge cruxes",
+      "excerpt_or_summary": "Business and edge artifacts frame labor classification and local regulation as non-linear thesis risks.",
+      "source_key": "business"
+    }
+  ],
+  "kill_metric": {
+    "metric": "gross_bookings_growth_and_operating_margin",
+    "threshold_direction": "below",
+    "threshold_value": 0.0,
+    "threshold_unit": "ratio",
+    "threshold_period": "FY2027",
+    "check_by": "2027-12-31",
+    "thesis_action": "Force Senior re-underwrite of the platform leverage crux and move to pass unless another audited driver offsets broken growth-to-margin conversion.",
+    "source_label": "C-5 edge cruxes",
+    "excerpt_or_summary": "The gross bookings and operating-margin crux is the central falsifiable monitor for the variant view.",
+    "source_key": "edge_cruxes"
+  },
+  "risk_completeness": {
+    "draft": "The sheet is decision-ready for M3.6 because the main downside path, DCF bear value, modelled risks, and tail bucket are tied to filed route artifacts. Could not verify real-time local regulatory developments, current insurance claims severity, or city-level incentive intensity beyond authored fixtures. Sustained bookings growth with stable margins would raise confidence; margin compression from insurance, labor, or incentives would lower confidence.",
+    "source_label": "C-6 source stack",
+    "excerpt_or_summary": "Filed artifacts provide enough evidence for an undecided Senior review package while preserving explicit gaps.",
+    "source_key": "edge_cruxes"
+  },
+  "source_evidence_summary": {
+    "business": "Business artifact frames UBER as a mobility, delivery, and freight platform.",
+    "moat": "Moat artifact supplies marketplace-liquidity and network-density context.",
+    "capalloc": "Capital allocation artifact supplies reinvestment, dilution, and balance-sheet context.",
+    "scenarios": "Scenario artifact supplies filed DCF bear/base/bull paths and bear value.",
+    "edge_cruxes": "Edge & Cruxes artifact supplies falsifiable route-specific thesis monitors.",
+    "mechanical": "Gate card, method directive, DCF valuation, reverse DCF, and spine provide mechanical downside context."
+  }
+}

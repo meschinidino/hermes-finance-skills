@@ -7,7 +7,12 @@ import pytest
 from skills.audit import AuditError, audit_artifact
 from skills.data.edgar.edgar import fetch_edgar_facts
 from skills.data.price.price import fetch_price
-from skills.valuation.screens.screens import build_gate_card_from_inputs, inputs_from_edgar, select_altman_variant
+from skills.valuation.screens.screens import (
+    NO_INVENTORY_REPORTED_STATUS,
+    build_gate_card_from_inputs,
+    inputs_from_edgar,
+    select_altman_variant,
+)
 
 
 def _inputs(industry: str = "manufacturer"):
@@ -39,6 +44,20 @@ def test_screens_use_sourced_concepts_not_proxies() -> None:
     assert inputs.net_income[-1].provenance.tag == "us-gaap:NetIncomeLoss"
     assert "proxy" not in inputs.gross_margin[-1].derivation
     assert "proxy" not in inputs.asset_turnover[-1].derivation
+
+
+def test_inventory_trend_is_not_applicable_when_issuer_reports_no_inventory() -> None:
+    produced = datetime(2026, 6, 30, tzinfo=timezone.utc)
+    edgar = fetch_edgar_facts("UBER")
+    price = fetch_price("UBER", edgar=edgar)
+    inputs = inputs_from_edgar(edgar, price, industry_classification="rideshare and delivery platform", produced_at=produced)
+
+    gate = build_gate_card_from_inputs(inputs, produced_at=produced)
+
+    assert gate.smoke.inventory_trend == NO_INVENTORY_REPORTED_STATUS
+    assert gate.smoke.dso_trend != NO_INVENTORY_REPORTED_STATUS
+    assert gate.smoke.ni_cfo_gap_widening is False
+    audit_artifact(gate)
 
 
 def test_non_manufacturer_fixture_selects_z_double_prime() -> None:

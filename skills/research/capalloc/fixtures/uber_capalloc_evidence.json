@@ -1,0 +1,32 @@
+{
+  "reinvestment_behavior": {
+    "draft": "Uber is reinvesting in marketplace products, advertising, membership, technology, and category expansion while operating as a profitable platform; the Senior should judge whether reinvestment strengthens network density or reintroduces incentive-heavy growth.",
+    "source_label": "UBER FY2025 Form 10-K operating expense and strategy discussion",
+    "excerpt_or_summary": "The fixture links platform reinvestment and operating leverage to filed revenue, cost, and operating income facts.",
+    "filing_reference": "UBER FY2025 Form 10-K, MD&A and EDGAR-derived spine inputs",
+    "period": "FY2025",
+    "tag": "us-gaap:OperatingIncomeLoss",
+    "form": "10-K",
+    "fixture_ref": "skills/research/capalloc/fixtures/uber_capalloc_evidence.json#reinvestment_behavior"
+  },
+  "shareholder_return_behavior": {
+    "draft": "Shareholder returns should be judged against dilution, stock-based compensation, and buyback discipline rather than against inventory or working-capital release, because the issuer does not report inventory.",
+    "source_label": "UBER FY2025 Form 10-K equity and liquidity discussion",
+    "excerpt_or_summary": "The EDGAR share-count facts and equity disclosures provide the share-base context for per-share value and capital return discipline.",
+    "filing_reference": "UBER FY2025 Form 10-K, liquidity and stockholders' equity disclosures",
+    "period": "FY2025",
+    "tag": "dei:EntityCommonStockSharesOutstanding",
+    "form": "10-K",
+    "fixture_ref": "skills/research/capalloc/fixtures/uber_capalloc_evidence.json#shareholder_return_behavior"
+  },
+  "balance_sheet_discipline": {
+    "draft": "Balance-sheet discipline hinges on preserving flexibility for insurance, legal, regulatory, and marketplace-cycle shocks while funding growth without weakening the cash-generator route.",
+    "source_label": "UBER FY2025 EDGAR-derived cash, liabilities, and debt facts",
+    "excerpt_or_summary": "EDGAR-derived cash, debt, and liability concepts frame financial flexibility and WACC inputs.",
+    "filing_reference": "UBER FY2025 Form 10-K, balance sheet",
+    "period": "FY2025",
+    "tag": "us-gaap:CashAndCashEquivalentsAtCarryingValue",
+    "form": "10-K",
+    "fixture_ref": "skills/research/capalloc/fixtures/uber_capalloc_evidence.json#balance_sheet_discipline"
+  }
+}

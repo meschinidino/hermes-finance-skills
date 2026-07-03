@@ -130,7 +130,7 @@ class M0ScaffoldTest(unittest.TestCase):
                 "error": {
                     "code": "unknown_ticker",
                     "requested_ticker": "SONY",
-                    "enabled_tickers": ["AAPL", "MRNA"],
+                    "enabled_tickers": ["AAPL", "MRNA", "UBER"],
                     "message": "ticker not enabled in this deployment",
                 },
             },

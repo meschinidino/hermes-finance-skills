@@ -181,6 +181,80 @@ def test_azure_foundry_senior_uses_foundry_v1_chat_completions_shape(monkeypatch
     assert response["response_model"] == "DeepSeek-V4-Pro"
 
 
+def test_azure_foundry_ratify_retries_malformed_decision_and_halts_with_raw_response(tmp_path, monkeypatch) -> None:
+    captured_bodies = []
+
+    def fake_urlopen(req, timeout):
+        body = json.loads(req.data.decode("utf-8"))
+        captured_bodies.append(body)
+        system = body["messages"][0]["content"]
+        package = json.loads(body["messages"][1]["content"])
+        if "ratification pass" not in system:
+            return _chat_response({"decision": "GO", "rationale": "test go", "decided_by": "live-test-senior"})
+        bad_label = "DIG_RETRY" if "previous response did not match" in system else "DIG"
+        return _chat_response(
+            {
+                "decided_by": "live-test-senior",
+                "decisions": {item_id: bad_label for item_id in package["required_item_ids"]},
+            }
+        )
+
+    monkeypatch.setattr(control_flow.request, "urlopen", fake_urlopen)
+    senior = AzureFoundrySenior(
+        endpoint="https://company-hq.services.ai.azure.com/openai/v1",
+        api_key="test-key",
+        deployment="senior-deepseek-v4-pro",
+    )
+    storage = LocalStorage(tmp_path)
+
+    payload = resolver.analyze("AAPL", as_of=RUN_DATE, storage=storage, senior=senior)
+
+    assert payload["status"] == "halted"
+    assert payload["kill_memo"]["halt_kind"] == "live_senior_api_failure"
+    assert payload["kill_memo"]["gate"] == "consolidated_ratification"
+    assert "raw_response" in payload["kill_memo"]["reason"]
+    assert "DIG_RETRY" in payload["kill_memo"]["reason"]
+    assert len(captured_bodies) == 3
+    assert "previous response did not match" in captured_bodies[2]["messages"][0]["content"]
+    assert "decision\" must be one of" not in payload["kill_memo"]["reason"]
+    assert storage.get_json(payload["kill_memo_path"]) == payload["kill_memo"]
+    with pytest.raises(FileNotFoundError):
+        storage.get_json("runs/AAPL/2026-07-03/senior_decision_package.json")
+
+
+def test_azure_foundry_ratify_well_formed_response_parses(monkeypatch) -> None:
+    captured_bodies = []
+
+    def fake_urlopen(req, timeout):
+        body = json.loads(req.data.decode("utf-8"))
+        captured_bodies.append(body)
+        package = json.loads(body["messages"][1]["content"])
+        return _chat_response(
+            {
+                "decided_by": "live-test-senior",
+                "decisions": {
+                    item_id: {"decision": "ratified", "final": None, "rationale": f"accepted {item_id}"}
+                    for item_id in package["required_item_ids"]
+                },
+            }
+        )
+
+    monkeypatch.setattr(control_flow.request, "urlopen", fake_urlopen)
+    senior = AzureFoundrySenior(
+        endpoint="https://company-hq.services.ai.azure.com/openai/v1",
+        api_key="test-key",
+        deployment="senior-deepseek-v4-pro",
+    )
+
+    response = senior.ratify({"ticker": "AAPL", "required_item_ids": ["review_a", "review_b"]})
+
+    assert response["decided_by"] == "live-test-senior"
+    assert response["decisions"]["review_a"]["decision"] == "ratified"
+    assert response["decisions"]["review_b"]["final"] is None
+    assert len(captured_bodies) == 1
+    assert "Each decision value must be an object" in captured_bodies[0]["messages"][0]["content"]
+
+
 def test_live_senior_http_error_files_kill_memo_with_response_body(tmp_path, monkeypatch) -> None:
     def failing_urlopen(req, timeout):
         raise HTTPError(
@@ -401,6 +475,16 @@ class FakeHTTPResponse:
 
     def read(self):
         return json.dumps(self.payload).encode("utf-8")
+
+
+def _chat_response(content):
+    return FakeHTTPResponse(
+        {
+            "id": "chatcmpl-test",
+            "model": "DeepSeek-V4-Pro",
+            "choices": [{"message": {"content": json.dumps(content)}}],
+        }
+    )
 
 
 class LiveAnalyst:

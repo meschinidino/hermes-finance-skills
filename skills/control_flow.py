@@ -36,6 +36,14 @@ class LiveSeniorAPIError(ControlFlowError):
     pass
 
 
+class LiveSeniorMalformedResponseError(LiveSeniorAPIError):
+    def __init__(self, message: str, *, raw_response: str | None = None) -> None:
+        self.raw_response = raw_response
+        if raw_response is not None:
+            message = f"{message}; raw_response={raw_response!r}"
+        super().__init__(message)
+
+
 class SeniorIdentity(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid", arbitrary_types_allowed=False)
 
@@ -449,13 +457,20 @@ class AzureFoundrySenior:
         }
 
     def ratify(self, package: dict[str, Any]) -> dict[str, Any]:
-        response = self._chat(
-            system="You are the Senior signer. Return strict JSON with decided_by and decisions for every required item.",
-            payload=package,
-        )
-        decisions = response.get("decisions")
-        if not isinstance(decisions, dict):
-            raise ValueError("Azure Senior ratify response requires decisions")
+        try:
+            response = self._chat(system=_ratification_system_prompt(), payload=package)
+            decisions = _validated_ratification_decisions(response, package)
+        except LiveSeniorMalformedResponseError as exc:
+            response = self._chat(
+                system=_ratification_system_prompt(
+                    corrective_error=(
+                        "Your previous response did not match the required ratification JSON schema. "
+                        f"Validation error: {exc}"
+                    )
+                ),
+                payload=package,
+            )
+            decisions = _validated_ratification_decisions(response, package)
         return {
             "decided_by": str(response.get("decided_by") or self.decided_by),
             "decisions": decisions,
@@ -485,7 +500,7 @@ class AzureFoundrySenior:
         )
         try:
             with request.urlopen(req, timeout=60) as response:
-                raw = json.loads(response.read().decode("utf-8"))
+                response_body = response.read().decode("utf-8")
         except HTTPError as exc:
             error_body = exc.read().decode("utf-8", errors="replace")
             raise LiveSeniorAPIError(
@@ -495,8 +510,20 @@ class AzureFoundrySenior:
             raise LiveSeniorAPIError(f"live Senior API failure: {exc.reason}") from exc
         except TimeoutError as exc:
             raise LiveSeniorAPIError(f"live Senior API failure: {exc}") from exc
-        content = raw["choices"][0]["message"]["content"]
-        parsed = json.loads(content)
+        try:
+            raw = json.loads(response_body)
+        except json.JSONDecodeError as exc:
+            raise LiveSeniorMalformedResponseError("live Senior API returned non-JSON response body", raw_response=response_body) from exc
+        try:
+            content = raw["choices"][0]["message"]["content"]
+        except (KeyError, IndexError, TypeError) as exc:
+            raise LiveSeniorMalformedResponseError("live Senior API response missing choices[0].message.content", raw_response=response_body) from exc
+        try:
+            parsed = json.loads(content)
+        except json.JSONDecodeError as exc:
+            raise LiveSeniorMalformedResponseError("live Senior returned non-JSON message content", raw_response=str(content)) from exc
+        if not isinstance(parsed, dict):
+            raise LiveSeniorMalformedResponseError("live Senior message content must decode to a JSON object", raw_response=str(content))
         parsed["response_model"] = raw.get("model")
         parsed["response_id"] = raw.get("id")
         response_identity = self.identity.model_copy(
@@ -504,6 +531,66 @@ class AzureFoundrySenior:
         )
         SeniorIdentity.model_validate(response_identity.model_dump())
         return parsed
+
+
+def _ratification_system_prompt(*, corrective_error: str | None = None) -> str:
+    schema = (
+        "You are the Senior signer for a ratification pass. Return ONLY a JSON object with this exact shape: "
+        '{"decided_by":"<senior id>","decisions":{"<required_item_id>":'
+        '{"decision":"ratified|overturned","final":null,"rationale":"<why>"}}}. '
+        "The decisions object must contain exactly one object entry for every id in required_item_ids. "
+        "Each decision value must be an object, never a string. "
+        "Allowed decision values are only ratified or overturned. "
+        "Do not return gate-card labels such as PASS, DIG, KILL, GO, or NO-GO as ratification decisions. "
+        "Use final:null when ratifying as-is or rejecting without replacement; put a complete replacement value in final only when overriding."
+    )
+    if corrective_error:
+        return f"{schema} {corrective_error} Re-send the full response from scratch using the exact schema."
+    return schema
+
+
+def _validated_ratification_decisions(response: dict[str, Any], package: dict[str, Any]) -> dict[str, Any]:
+    required_item_ids = [str(item_id) for item_id in package.get("required_item_ids", [])]
+    decisions = response.get("decisions")
+    if not isinstance(decisions, dict):
+        raise LiveSeniorMalformedResponseError("live Senior ratify response requires decisions object", raw_response=json.dumps(response, sort_keys=True))
+    decision_ids = {str(item_id) for item_id in decisions}
+    required_ids = set(required_item_ids)
+    missing = sorted(required_ids - decision_ids)
+    extra = sorted(decision_ids - required_ids)
+    if missing or extra:
+        parts = []
+        if missing:
+            parts.append(f"missing required item ids: {', '.join(missing)}")
+        if extra:
+            parts.append(f"unknown decision item ids: {', '.join(extra)}")
+        raise LiveSeniorMalformedResponseError(
+            "live Senior ratify decisions must exactly match required_item_ids; " + "; ".join(parts),
+            raw_response=json.dumps(response, sort_keys=True),
+        )
+    for item_id in required_item_ids:
+        payload = decisions[item_id]
+        if not isinstance(payload, dict):
+            raise LiveSeniorMalformedResponseError(
+                f"live Senior ratify decision {item_id} must be an object with decision, final, and rationale",
+                raw_response=json.dumps(response, sort_keys=True),
+            )
+        if set(payload) < {"decision", "final", "rationale"}:
+            raise LiveSeniorMalformedResponseError(
+                f"live Senior ratify decision {item_id} missing decision, final, or rationale",
+                raw_response=json.dumps(response, sort_keys=True),
+            )
+        if payload.get("decision") not in {"ratified", "overturned"}:
+            raise LiveSeniorMalformedResponseError(
+                f"live Senior ratify decision {item_id} has invalid decision {payload.get('decision')!r}",
+                raw_response=json.dumps(response, sort_keys=True),
+            )
+        if not isinstance(payload.get("rationale"), str) or not payload["rationale"].strip():
+            raise LiveSeniorMalformedResponseError(
+                f"live Senior ratify decision {item_id} requires non-empty rationale string",
+                raw_response=json.dumps(response, sort_keys=True),
+            )
+    return decisions
 
 
 def _identity_payload_from_adapter(adapter: Any) -> dict[str, Any] | None:

@@ -39,6 +39,23 @@ def test_extracts_mrna_real_sec_fixture_with_raw_usd_scale() -> None:
     assert "revenue_fallback:mixed:us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax,us-gaap:Revenues" in facts.flags
 
 
+def test_extracts_uber_service_platform_fixture_with_non_reported_inventory_marker() -> None:
+    facts = fetch_edgar_facts("UBER")
+
+    assert resolve_cik("UBER") == "0001543151"
+    assert facts.cik == "0001543151"
+    assert facts.years == ["FY2021", "FY2022", "FY2023", "FY2024", "FY2025"]
+    assert facts.facts.revenue[-1].value == 52017
+    assert (
+        facts.facts.cost_of_revenue[-1].provenance.tag
+        == "us-gaap:CostOfGoodsAndServiceExcludingDepreciationDepletionAndAmortization"
+    )
+    assert facts.facts.inventory[-1].value == 0
+    assert facts.facts.inventory[-1].provenance.tag == "us-gaap:InventoryNet:not_reported_by_issuer"
+    assert facts.facts.inventory[-1].provenance.accession == "not_reported_by_issuer"
+    assert "inventory_not_reported_by_issuer" in facts.flags
+
+
 def test_missing_required_concept_fails_closed(tmp_path: Path) -> None:
     fixture_dir = _copy_fixtures(tmp_path)
     facts_path = fixture_dir / "aapl_companyfacts.json"

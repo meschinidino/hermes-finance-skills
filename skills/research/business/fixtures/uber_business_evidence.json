@@ -1,0 +1,26 @@
+{
+  "business_model_summary": {
+    "draft": "Uber is a global mobility, delivery, and freight platform that connects consumers, drivers, couriers, merchants, shippers, and carriers through marketplace networks.",
+    "source_label": "Uber FY2025 Form 10-K business description",
+    "excerpt_or_summary": "The business description identifies Uber as a platform operating Mobility, Delivery, and Freight businesses with network participants on both sides of each marketplace.",
+    "filing_reference": "UBER FY2025 Form 10-K, Item 1"
+  },
+  "revenue_driver_summary": {
+    "draft": "Revenue is driven by gross bookings, trips, take rate, advertising and subscription attach, delivery frequency, and freight volume; the key underwriting question is whether scale benefits can keep expanding operating profit.",
+    "source_label": "Uber FY2025 Form 10-K revenue and MD&A discussion",
+    "excerpt_or_summary": "The filing links revenue and profitability to marketplace activity, take rates, incentives, category mix, and operating leverage across Mobility, Delivery, and Freight.",
+    "filing_reference": "UBER FY2025 Form 10-K, Item 7"
+  },
+  "customer_end_market_summary": {
+    "draft": "End markets include urban mobility riders, restaurants and merchants, consumers ordering local commerce, advertisers, shippers, carriers, drivers, and couriers across many geographies.",
+    "source_label": "Uber FY2025 Form 10-K segment and marketplace discussion",
+    "excerpt_or_summary": "The filing describes multi-sided marketplaces that serve riders, eaters, merchants, advertisers, shippers, carriers, drivers, and couriers.",
+    "filing_reference": "UBER FY2025 Form 10-K, Item 1"
+  },
+  "business_understanding_risk": {
+    "draft": "The early gate should focus on whether a Senior is comfortable underwriting regulatory, labor-classification, insurance, incentive, and competitive risks while treating missing inventory as expected for a service/platform issuer.",
+    "source_label": "Uber FY2025 Form 10-K risk factors",
+    "excerpt_or_summary": "Risk factors emphasize legal and regulatory constraints, worker classification, insurance cost, competitive intensity, marketplace liquidity, and international operating risk.",
+    "filing_reference": "UBER FY2025 Form 10-K, Item 1A"
+  }
+}

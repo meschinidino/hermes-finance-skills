@@ -1,0 +1,83 @@
+{
+  "steelman_no_trade": {
+    "draft": "A rational Senior could pass because the market may already price in durable platform growth, while regulatory, insurance, and labor risks can pressure margins abruptly.",
+    "source_label": "C-4 DCF scenarios and UBER filed spine",
+    "excerpt_or_summary": "The filed DCF scenario set and spine identify a profitable platform with valuation sensitivity to growth, margins, WACC, and regulatory costs.",
+    "source_key": "scenarios"
+  },
+  "counterparty": {
+    "draft": "The plausible counterparty is a growth holder reducing exposure because the stock already discounts sustained platform leverage while labor, insurance, and local competition risks remain hard to time.",
+    "source_label": "C-1 Business and C-4 DCF scenarios",
+    "excerpt_or_summary": "Business and scenario artifacts identify regulatory and margin durability as the central disagreement mechanism.",
+    "source_key": "business"
+  },
+  "structural_mispricing": {
+    "draft": {
+      "asserts_edge": true,
+      "mechanism": "Investors can underweight the durability of local network density and advertising or membership attach because reported results mix Mobility, Delivery, and Freight cycles.",
+      "persistence_reason": "The disagreement can persist until several reporting periods show whether gross bookings growth converts into stable incremental margins."
+    },
+    "source_label": "C-2 Moat and C-4 DCF scenarios",
+    "excerpt_or_summary": "Moat and scenario drafts support marketplace density and operating leverage as the main variant-view drivers.",
+    "source_key": "moat"
+  },
+  "variant_view": {
+    "draft": "The variant view is that the market is underweighting marketplace density, advertising and membership attach, and operating leverage while over-indexing on regulatory and insurance headlines.",
+    "source_label": "C-1 Business, C-2 Moat, and C-4 DCF scenarios",
+    "excerpt_or_summary": "Filed Analyst artifacts support a profitable platform DCF route rather than an inventory or asset-turnover thesis.",
+    "source_key": "scenarios"
+  },
+  "catalysts": {
+    "draft": [
+      {
+        "event": "Quarterly gross bookings, trips, and adjusted operating profit disclosures",
+        "timing": "next four reported quarters",
+        "why_it_matters": "Tests whether marketplace growth is converting into durable profit."
+      },
+      {
+        "event": "Major labor, insurance, or local-market regulatory updates",
+        "timing": "ongoing through the next annual filing cycle",
+        "why_it_matters": "Tests whether legal and insurance risks absorb operating leverage."
+      }
+    ],
+    "source_label": "C-4 DCF scenarios and C-6 risk setup",
+    "excerpt_or_summary": "Scenario and risk artifacts identify growth conversion, margin durability, and regulatory cost as thesis drivers.",
+    "source_key": "scenarios"
+  },
+  "cruxes": [
+    {
+      "kind": "edge_crux",
+      "claim": "Gross bookings growth must keep converting into operating profit.",
+      "metric": "gross_bookings_growth_and_operating_margin",
+      "threshold_direction": "at_or_above",
+      "threshold_value": "growth remains positive while operating margin is stable to improving",
+      "check_by": "2027-12-31",
+      "evidence_source_key": "scenarios"
+    },
+    {
+      "kind": "edge_crux",
+      "claim": "Regulatory and insurance costs must not absorb platform leverage.",
+      "metric": "insurance_legal_and_regulatory_cost_trend",
+      "threshold_direction": "below",
+      "threshold_value": "cost growth that offsets most incremental operating profit",
+      "check_by": "2027-12-31",
+      "evidence_source_key": "business"
+    },
+    {
+      "kind": "edge_crux",
+      "claim": "The platform must avoid renewed incentive-heavy growth.",
+      "metric": "driver_courier_incentive_intensity",
+      "threshold_direction": "below",
+      "threshold_value": "sustained incentive escalation that compresses take-rate economics",
+      "check_by": "2027-12-31",
+      "evidence_source_key": "capalloc"
+    }
+  ],
+  "source_evidence_summary": {
+    "business": "Business artifact frames UBER as a multi-sided mobility, delivery, and freight marketplace.",
+    "moat": "Moat artifact supports network density and marketplace liquidity while flagging regulation and incentive intensity.",
+    "capalloc": "Capital allocation artifact supplies reinvestment, dilution, and balance-sheet flexibility context.",
+    "scenarios": "Scenario artifact identifies DCF-specific growth, margin, and WACC drivers.",
+    "mechanical": "Gate card, method directive, DCF valuation, reverse DCF, and spine provide mechanical context."
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "moat_mechanism": {
+    "draft": {
+      "claim": "Uber's potential moat is marketplace liquidity and network density across Mobility and Delivery, reinforced by brand, routing, pricing, and merchant/consumer relationships.",
+      "mechanism_category": "network_effects",
+      "support_categories": [
+        "network_effects",
+        "scale_advantage",
+        "marketplace_liquidity",
+        "network_density",
+        "brand",
+        "operating_scale"
+      ],
+      "mechanism_evidence": "The platform can improve matching, wait times, merchant reach, and driver/courier utilization as local network density increases, but the durability must be judged against regulation and incentive intensity."
+    },
+    "source_label": "Uber FY2025 Form 10-K marketplace and segment discussion",
+    "excerpt_or_summary": "The filing describes scaled Mobility and Delivery marketplaces and the operating model that connects consumers, drivers, couriers, merchants, shippers, and carriers.",
+    "filing_reference": "UBER FY2025 Form 10-K, Item 1",
+    "period": "FY2025",
+    "tag": "us-gaap:BusinessDescription",
+    "form": "10-K",
+    "fixture_ref": "skills/research/moat/fixtures/uber_moat_evidence.json#moat_mechanism"
+  },
+  "historical_economics": {
+    "draft": "FY2025 operating income is positive, so the historical economics support a cash-generator route, but the Senior still must judge whether current margins are durable after insurance, incentives, and regulatory costs.",
+    "source_label": "UBER filed spine artifact",
+    "excerpt_or_summary": "The spine carries positive FY2025 revenue and operating income from EDGAR-derived facts.",
+    "filing_reference": "UBER FY2025 Form 10-K, EDGAR-derived spine inputs",
+    "period": "FY2025",
+    "tag": "computed:spread",
+    "form": "10-K",
+    "fixture_ref": "skills/research/moat/fixtures/uber_moat_evidence.json#historical_economics"
+  },
+  "durability_risk": {
+    "draft": "The durability risk is that regulation, worker classification, insurance inflation, or aggressive local competition absorbs the benefits of network density before they become stable incremental margins.",
+    "source_label": "Uber FY2025 Form 10-K legal, regulatory, and competition risks",
+    "excerpt_or_summary": "Risk factors discuss regulatory limits, worker classification, insurance and claims exposure, competitive pressure, and marketplace participant supply.",
+    "filing_reference": "UBER FY2025 Form 10-K, Item 1A",
+    "period": "FY2025",
+    "tag": "us-gaap:RiskFactors",
+    "form": "10-K",
+    "fixture_ref": "skills/research/moat/fixtures/uber_moat_evidence.json#durability_risk"
+  }
+}

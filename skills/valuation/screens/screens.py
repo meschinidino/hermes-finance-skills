@@ -17,6 +17,8 @@ from skills.accountant_artifacts import (
 )
 
 AltmanVariant = Literal["manufacturer", "z_double_prime", "emerging_market_z_double_prime_plus_3_25"]
+NO_INVENTORY_REPORTED_STATUS = "not_applicable: no inventory reported"
+NOT_REPORTED_BY_ISSUER = "not_reported_by_issuer"
 
 
 @dataclass(frozen=True)
@@ -81,7 +83,7 @@ def build_gate_card_from_inputs(
         auditor_change=inputs.auditor_change,
         ni_cfo_gap_widening=_ni_cfo_gap_widening(inputs),
         dso_trend=_trend("DSO", [_ratio(r, s) for r, s in zip(inputs.receivables, inputs.sales, strict=True)]),
-        inventory_trend=_trend("Inventory", [_ratio(inv, sales) for inv, sales in zip(inputs.inventory, inputs.sales, strict=True)]),
+        inventory_trend=_inventory_trend(inputs),
     )
     dig_items = _dig_items(altman, beneish, piotroski, smoke)
     latest = inputs.years[-1]
@@ -326,6 +328,20 @@ def _ni_cfo_gap_widening(inputs: ScreenInputSet) -> bool:
     latest_gap = abs(inputs.net_income[-1].value - inputs.operating_cash_flow[-1].value)
     prior_gap = abs(inputs.net_income[-2].value - inputs.operating_cash_flow[-2].value)
     return latest_gap > prior_gap
+
+
+def _inventory_trend(inputs: ScreenInputSet) -> str:
+    if _inventory_not_reported(inputs.inventory):
+        return NO_INVENTORY_REPORTED_STATUS
+    return _trend("Inventory", [_ratio(inv, sales) for inv, sales in zip(inputs.inventory, inputs.sales, strict=True)])
+
+
+def _inventory_not_reported(inventory: list[Number]) -> bool:
+    return all(
+        number.provenance.accession == NOT_REPORTED_BY_ISSUER
+        or number.provenance.tag.endswith(f":{NOT_REPORTED_BY_ISSUER}")
+        for number in inventory
+    )
 
 
 def _trend(name: str, values: list[float]) -> str:

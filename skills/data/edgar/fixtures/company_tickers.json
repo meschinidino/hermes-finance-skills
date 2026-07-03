@@ -8,5 +8,10 @@
     "cik_str": 1682852,
     "ticker": "MRNA",
     "title": "Moderna, Inc."
+  },
+  "2": {
+    "cik_str": 1543151,
+    "ticker": "UBER",
+    "title": "Uber Technologies, Inc."
   }
 }

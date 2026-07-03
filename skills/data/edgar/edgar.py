@@ -25,7 +25,11 @@ CONCEPT_FALLBACKS = {
     "current_liabilities": ["us-gaap:LiabilitiesCurrent"],
     "retained_earnings": ["us-gaap:RetainedEarningsAccumulatedDeficit"],
     "receivables": ["us-gaap:ReceivablesNetCurrent", "us-gaap:AccountsReceivableNetCurrent"],
-    "cost_of_revenue": ["us-gaap:CostOfGoodsAndServicesSold", "us-gaap:CostOfRevenue"],
+    "cost_of_revenue": [
+        "us-gaap:CostOfGoodsAndServicesSold",
+        "us-gaap:CostOfRevenue",
+        "us-gaap:CostOfGoodsAndServiceExcludingDepreciationDepletionAndAmortization",
+    ],
     "operating_cash_flow": ["us-gaap:NetCashProvidedByUsedInOperatingActivities"],
     "net_income": ["us-gaap:NetIncomeLoss"],
     "depreciation_amortization": [
@@ -46,7 +50,8 @@ CONCEPT_FALLBACKS = {
     "interest_expense": ["us-gaap:InterestExpense"],
 }
 
-OPTIONAL_ZERO_CONCEPTS = {"goodwill", "short_term_borrowings", "interest_expense"}
+OPTIONAL_ZERO_CONCEPTS = {"goodwill", "short_term_borrowings", "interest_expense", "inventory"}
+NOT_REPORTED_BY_ISSUER = "not_reported_by_issuer"
 
 
 @dataclass(frozen=True)
@@ -69,8 +74,12 @@ def fetch_edgar_facts(ticker: str, *, fixture_dir: Path = FIXTURE_DIR) -> EdgarF
         extracted = _extract_concept(raw, fallback_tags, years, retrieved_at, usd_divisor=usd_divisor)
         if extracted is None:
             if concept_name in OPTIONAL_ZERO_CONCEPTS:
-                flags.append(f"{concept_name}_explicit_zero")
-                values = [_zero_fact(concept_name, year, retrieved_at) for year in years]
+                if concept_name == "inventory":
+                    flags.append(f"{concept_name}_{NOT_REPORTED_BY_ISSUER}")
+                    values = [_not_reported_fact(concept_name, fallback_tags[0], year, retrieved_at) for year in years]
+                else:
+                    flags.append(f"{concept_name}_explicit_zero")
+                    values = [_zero_fact(concept_name, year, retrieved_at) for year in years]
             else:
                 raise ValueError(f"unresolved_concept:{concept_name}")
         else:
@@ -195,6 +204,22 @@ def _zero_fact(concept_name: str, year: str, retrieved_at: datetime) -> Number:
             period=year,
             accession="explicit-zero",
             source_name="EDGAR",
+            retrieved_at=retrieved_at,
+        ),
+    )
+
+
+def _not_reported_fact(concept_name: str, expected_tag: str, year: str, retrieved_at: datetime) -> Number:
+    return Number(
+        value=0.0,
+        unit="USD_millions",
+        kind="fact",
+        provenance=Provenance(
+            tag=f"{expected_tag}:{NOT_REPORTED_BY_ISSUER}",
+            form="10-K",
+            period=year,
+            accession=NOT_REPORTED_BY_ISSUER,
+            source_name=f"EDGAR:{NOT_REPORTED_BY_ISSUER}:{concept_name}",
             retrieved_at=retrieved_at,
         ),
     )
