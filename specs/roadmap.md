@@ -79,6 +79,7 @@ Replace the accretion-payload assembly with a real synthesis boundary. Zero new 
 ### M4b — Synthesis skills
 `D-2 Conviction` and `D-3 Review Packager`, built on top of the stable boundary from M4a.
 **Done:** `analyze()` produces a complete, Senior-signed Handoff.
+**Spec:** `specs/2026-07-03-m4b-synthesis-skills/`
 
 ### M4c — Control flow
 Routing table, escalation matrix, parallelism, KILL halt, revisit triggers, C-5 `pass_falsifiers` wired into Handoff revisit triggers, and independence checks upgraded from declared labels to actual provider/model identity.
