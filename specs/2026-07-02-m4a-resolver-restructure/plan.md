@@ -50,14 +50,16 @@ The boundary should be placed under `skills/synthesis/` unless implementation re
 
 ## Implementation Steps
 
-1. Capture the current `analyze()` output shape for AAPL and MRNA in focused tests before refactoring.
+1. Capture pre-restructure `analyze()` outputs for AAPL and MRNA using fixed `as_of` dates and isolated storage.
 2. Define a synthesis input contract for current run metadata, method directive, route manifest, artifact paths, and optional DCF paths.
 3. Move the inline payload assembly at the end of `analyze()` behind the new synthesis boundary.
 4. Keep all existing artifact construction, audit, persistence, and Senior call ordering unchanged.
 5. Keep `handoff.json` as the existing D-1 bare handoff artifact.
 6. Make the resolver call the boundary only after current M3.7 ratification completes on GO paths.
-7. Add tests that compare key sets and representative nested values before and after the boundary, using deterministic fixtures.
-8. Run the full offline suite and resolver smoke commands.
+7. Add focused boundary tests for DCF, non-DCF, and fail-closed missing artifacts.
+8. Run the full offline M0-M3 suite with no edits to pre-existing tests.
+9. Re-run AAPL and MRNA after the restructure and diff the serialized payloads against the pre-restructure outputs.
+10. Treat any payload difference beyond volatile timestamps or generated run identifiers as a regression unless it is explicitly explained and accepted.
 
 ## Risks And Decisions
 
@@ -68,4 +70,4 @@ The boundary should be placed under `skills/synthesis/` unless implementation re
 
 ## Expected Result
 
-After M4a, offline `analyze("AAPL")` and `analyze("MRNA")` return the same payload shape and filed artifacts as before, but final assembly flows through an explicit synthesis boundary that M4b can build on.
+After M4a, offline `analyze("AAPL")` and `analyze("MRNA")` return byte-equivalent payloads to the pre-restructure resolver after excluding volatile timestamps and run identifiers, while final assembly flows through an explicit synthesis boundary that M4b can build on.

@@ -74,6 +74,7 @@ Collect M2b and M3 ratifiables into one `SeniorReviewPackage`, call `Senior.rati
 Replace the accretion-payload assembly with a real synthesis boundary. Zero new features.
 **Done:** `analyze()` produces the same output as today through the new boundary, with all existing M0-M3 tests passing unchanged.
 **Spec:** `specs/2026-07-02-m4a-resolver-restructure/`
+**Status:** M4a complete (approved after domain review; M4a boundary preserves pre-restructure outputs except volatile timestamps and run identifiers, with full suite passing).
 
 ### M4b — Synthesis skills
 `D-2 Conviction` and `D-3 Review Packager`, built on top of the stable boundary from M4a.

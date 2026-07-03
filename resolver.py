@@ -22,6 +22,7 @@ from skills.research.risk.risk import audit_risk_artifact, build_risk_artifact
 from skills.research.scenarios.scenarios import audit_scenario_set, build_scenario_set_artifact
 from skills.serialization import artifact_model_to_payload
 from skills.storage import LocalStorage
+from skills.synthesis.current_payload import CurrentSynthesisInput, assemble_current_payload
 from skills.synthesis.handoff.handoff import build_handoff
 from skills.valuation.dcf.dcf import build_dcf_artifacts
 from skills.valuation.method_router.method_router import route_method
@@ -315,33 +316,26 @@ def analyze(
     )
     audit_senior_decision_package(senior_decision_package, storage=active_storage, path=f"{run_dir}/senior_decision_package.json")
 
-    payload = active_storage.get_json(handoff_path)
-    payload["business"] = active_storage.get_json(business_path)
-    payload["business_review_package"] = active_storage.get_json(f"{run_dir}/business_review_package.json")
-    payload["early_gate"] = active_storage.get_json(f"{run_dir}/business_early_gate.json")
-    payload["moat"] = active_storage.get_json(moat_path)
-    payload["moat_review_package"] = active_storage.get_json(f"{run_dir}/moat_review_package.json")
-    payload["capalloc"] = active_storage.get_json(capalloc_path)
-    payload["capalloc_review_package"] = active_storage.get_json(f"{run_dir}/capalloc_review_package.json")
-    payload["gate_card"] = active_storage.get_json(f"{run_dir}/gate_card.json")
-    payload["gate_card_review_package"] = active_storage.get_json(f"{run_dir}/gate_card_review_package.json")
-    payload["method_directive"] = active_storage.get_json(f"{run_dir}/method_directive.json")
-    payload["scenarios"] = active_storage.get_json(scenario_path)
-    payload["scenarios_review_package"] = active_storage.get_json(f"{run_dir}/scenarios_review_package.json")
-    payload["edge_cruxes"] = active_storage.get_json(edge_cruxes_path)
-    payload["edge_cruxes_review_package"] = active_storage.get_json(f"{run_dir}/edge_cruxes_review_package.json")
-    payload["risk"] = active_storage.get_json(f"{run_dir}/risk.json")
-    payload["risk_review_package"] = active_storage.get_json(f"{run_dir}/risk_review_package.json")
-    payload["senior_review_package"] = active_storage.get_json(f"{run_dir}/senior_review_package.json")
-    payload["senior_decision_package"] = active_storage.get_json(f"{run_dir}/senior_decision_package.json")
-    payload["route_review_manifest"] = route_manifest.model_dump(mode="json")
-    if method_directive.method == "DCF":
-        payload["valuation_range"] = active_storage.get_json(f"{run_dir}/valuation_range.json")
-        payload["expectations_line"] = active_storage.get_json(f"{run_dir}/expectations_line.json")
-    else:
-        payload["valuation_deferred"] = method_directive.fallback_behavior
-
-    return payload
+    return assemble_current_payload(
+        active_storage,
+        CurrentSynthesisInput(
+            ticker=normalized_ticker,
+            as_of=run_date,
+            run_dir=run_dir,
+            method=method_directive.method,
+            route_manifest=route_manifest,
+            handoff_path=handoff_path,
+            business_path=business_path,
+            moat_path=moat_path,
+            capalloc_path=capalloc_path,
+            scenario_path=scenario_path,
+            edge_cruxes_path=edge_cruxes_path,
+            risk_path=risk_path,
+            valuation_range_path=valuation_range_path,
+            expectations_line_path=expectations_line_path,
+            valuation_deferred=None if method_directive.method == "DCF" else method_directive.fallback_behavior,
+        ),
+    )
 
 
 class GateWiringError(ValueError):

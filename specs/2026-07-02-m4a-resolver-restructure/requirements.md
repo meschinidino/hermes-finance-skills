@@ -40,12 +40,13 @@
 - Missing required filed artifacts must fail closed.
 - DCF route assembly must fail closed if either `valuation_range.json` or `expectations_line.json` is missing.
 - Non-DCF route assembly must not require DCF-only artifacts.
+- AAPL and MRNA post-restructure payloads must diff equal to pre-restructure payloads after excluding volatile timestamps and generated run identifiers.
 
 ## Acceptance Criteria
 
 - The end-of-`analyze()` payload assembly is no longer an inline accretion block in `resolver.py`.
-- Current `analyze()` output for AAPL is shape-compatible with the pre-M4a output.
-- Current `analyze()` output for MRNA is shape-compatible with the pre-M4a output.
+- Current `analyze()` output for AAPL is byte-equivalent to the pre-M4a output except for volatile timestamps and generated run identifiers.
+- Current `analyze()` output for MRNA is byte-equivalent to the pre-M4a output except for volatile timestamps and generated run identifiers.
 - Current halted output behavior is unchanged.
-- All existing M0-M3 tests pass unchanged.
+- All existing M0-M3 tests pass unchanged, with zero modifications to pre-existing test files.
 - `python -m resolver AAPL` passes.
