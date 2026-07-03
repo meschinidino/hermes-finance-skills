@@ -23,9 +23,10 @@ The full pytest command is required. Focused D-2/D-3 tests are not sufficient to
 7. D-2 Conviction emits a pydantic artifact with `Header`.
 8. D-2 Conviction files its artifact to storage and reloads cleanly.
 9. D-2 Conviction fails closed when required ratified artifacts are missing.
-10. D-3 Review Packager emits a pydantic final Handoff artifact with `Header`.
-11. D-3 Review Packager files its artifact to storage and reloads cleanly.
-12. D-3 Review Packager fails closed when the D-2 artifact is missing.
+10. D-2 Conviction emits required `SizingInputs`.
+11. D-3 Review Packager emits a pydantic final Handoff artifact with `Header`.
+12. D-3 Review Packager files its artifact to storage and reloads cleanly.
+13. D-3 Review Packager fails closed when the D-2 artifact is missing.
 
 ## Required Resolver Tests
 
@@ -58,6 +59,9 @@ M4b introduces new failure modes. Each must have at least one test:
 5. Missing D-2 artifact:
    - Invoke D-3 without a filed D-2 artifact.
    - Expect D-3 to fail closed.
+6. Missing `sizing_inputs`:
+   - Build or mutate a final Handoff candidate without `sizing_inputs`.
+   - Expect the Handoff completeness check to fail closed.
 
 ## Manual Validation
 
@@ -81,6 +85,7 @@ For `analyze("AAPL")`:
 - Includes filed D-3 Review Packager / final Handoff artifact.
 - Includes Senior-signed lean.
 - Includes conviction label and score.
+- Includes required sizing inputs.
 - Includes provenance-bearing price and valuation numbers.
 - Includes exactly three cruxes.
 - Includes risk and edge artifacts.
@@ -99,6 +104,7 @@ M4b can be marked complete in `specs/roadmap.md` only after:
 - D-2 and D-3 skill bundles exist and pass validation;
 - `SynthesisPayload` is used before D-2/D-3 consumption;
 - D-2 and D-3 artifacts are filed and reloadable;
+- D-2 produces required `SizingInputs`;
 - `analyze()` returns a complete, Senior-signed Handoff on the GO path;
 - all required negative-path tests pass;
 - the full test suite passes;
