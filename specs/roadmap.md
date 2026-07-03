@@ -70,9 +70,18 @@ Collect M2b and M3 ratifiables into one `SeniorReviewPackage`, call `Senior.rati
 **Spec:** `specs/2026-07-01-m3-7-ratify-aggregation/`
 **Status:** M3.7 complete (B-4 Gate Card verdict plus C-2 through C-6 review packages consolidated into one SeniorReviewPackage, injected Senior.ratify called exactly once on the GO/DCF path, complete SeniorDecisionPackage persisted for M4 synthesis, and NO-GO path remains unratified). Validated with `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest tests/test_m3_7_ratify_aggregation.py`, `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest`, and `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync python -m resolver AAPL`.
 
-### M4 — Synthesis + the resolver
-`D-2 Conviction`, `D-3 Review Packager`; complete `resolver.md` behavior — routing table, escalation matrix, parallelism, KILL halt, the two Senior touchpoints. Full Handoff schema with revisit triggers.
-**Done:** `analyze()` produces a complete, senior-signed Handoff or a kill memo, routed and escalated correctly.
+### M4a — Resolver restructure
+Replace the accretion-payload assembly with a real synthesis boundary. Zero new features.
+**Done:** `analyze()` produces the same output as today through the new boundary, with all existing M0-M3 tests passing unchanged.
+**Spec:** `specs/2026-07-02-m4a-resolver-restructure/`
+
+### M4b — Synthesis skills
+`D-2 Conviction` and `D-3 Review Packager`, built on top of the stable boundary from M4a.
+**Done:** `analyze()` produces a complete, Senior-signed Handoff.
+
+### M4c — Control flow
+Routing table, escalation matrix, parallelism, KILL halt, revisit triggers, C-5 `pass_falsifiers` wired into Handoff revisit triggers, and independence checks upgraded from declared labels to actual provider/model identity.
+**Done:** a kill memo is produced correctly and escalations route as specified.
 
 ### M5 — Calibration + performance reviews
 `D-4 Calibration` analytics (hit-rate by conviction band, directional bias, leak-by-phase) + the routing-correctness and escalation-correctness checks.
@@ -83,4 +92,4 @@ Worked-example exemplar on a real ticker (highest-ROI learning aid); containeriz
 
 ---
 
-**Critical path through the build:** M0 → M1 → **M2a** → M2b → M3.1 → M3.2 → M3.3 → M3.4 → M3.5 → M3.6 → M3.7 → M4. M5/M6 thicken a proven system. If time is short, a credible end-to-end demo exists at the end of M4; everything after improves trust and reach, not core function.
+**Critical path through the build:** M0 → M1 → **M2a** → M2b → M3.1 → M3.2 → M3.3 → M3.4 → M3.5 → M3.6 → M3.7 → M4a → M4b → M4c. M5/M6 thicken a proven system. If time is short, a credible end-to-end demo exists at the end of M4c; everything after improves trust and reach, not core function.
