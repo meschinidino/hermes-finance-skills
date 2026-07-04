@@ -34,18 +34,21 @@ def test_forward_dcf_emits_three_schema_valid_scenarios() -> None:
     audit_artifact(valuation)
 
 
-def test_reverse_dcf_converges_at_both_wacc_band_bounds() -> None:
+def test_reverse_dcf_reports_current_fixture_price_outside_solvable_range() -> None:
     config, edgar, price, coc, normalized = _fixture_path()
     _, expectations = build_dcf_artifacts(normalized, edgar, price, coc, config)
 
     low = expectations.reverse_band_results["low"]
     high = expectations.reverse_band_results["high"]
-    assert low.converged
-    assert high.converged
-    assert low.implied_revenue_growth is not None
-    assert high.implied_revenue_growth is not None
+    assert "reverse_dcf_non_convergence" in expectations.flags
+    assert not low.converged
+    assert not high.converged
+    assert low.failure_reason
+    assert high.failure_reason
+    assert low.implied_revenue_growth is None
+    assert high.implied_revenue_growth is None
     assert expectations.implied["revenue_growth"] is None
-    assert expectations.implied["revenue_growth_midpoint"] is not None
+    assert expectations.implied["revenue_growth_midpoint"] is None
     assert expectations.authoritative_output == "wacc_band_edges"
     assert expectations.wacc_band["low"].value < expectations.wacc_band["high"].value
     audit_artifact(expectations)

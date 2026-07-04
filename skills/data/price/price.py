@@ -8,7 +8,12 @@ from skills.interfaces import PriceFeed
 from skills._primitives import Number, Provenance
 from skills.accountant_artifacts import EdgarFacts, PriceResult, make_external_number
 
-FIXTURE_PATH = Path(__file__).parents[3] / "tests" / "fixtures" / "aapl_price.json"
+FIXTURE_DIR = Path(__file__).parents[3] / "tests" / "fixtures"
+TICKER_FIXTURE_PATHS = {
+    "AAPL": FIXTURE_DIR / "aapl_price.json",
+    "MRNA": FIXTURE_DIR / "mrna_price.json",
+    "UBER": FIXTURE_DIR / "uber_price.json",
+}
 DEFAULT_FIXTURE_PRICES = {"AAPL": 200.0}
 
 
@@ -29,9 +34,10 @@ def fetch_price(
             price = float(quote["price"])
             source = str(quote.get("source", "InjectedPriceFeed"))
         else:
-            fixture = _load_fixture()
+            fixture_path = _fixture_path(normalized)
+            fixture = _load_fixture(fixture_path)
             price = float(fixture[normalized] if normalized in fixture else DEFAULT_FIXTURE_PRICES[normalized])
-            source = "fixture:tests/fixtures/aapl_price.json"
+            source = f"fixture:tests/fixtures/{fixture_path.name}"
     except Exception:
         if edgar is None:
             return PriceResult(ticker=normalized, price=None, source="unavailable", flags=["price_unavailable"])
@@ -66,10 +72,16 @@ def fetch_price(
     )
 
 
-def _load_fixture() -> dict[str, float]:
-    if not FIXTURE_PATH.exists():
+def _fixture_path(ticker: str) -> Path:
+    if ticker not in TICKER_FIXTURE_PATHS:
+        raise KeyError(ticker)
+    return TICKER_FIXTURE_PATHS[ticker]
+
+
+def _load_fixture(path: Path) -> dict[str, float]:
+    if not path.exists():
         return DEFAULT_FIXTURE_PRICES
-    raw = json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
+    raw = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(raw, dict):
         raise ValueError("price fixture must be an object")
     return {str(key).upper(): float(value) for key, value in raw.items()}

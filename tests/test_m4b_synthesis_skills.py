@@ -99,6 +99,53 @@ def test_conviction_files_reloadable_artifact_with_sizing_inputs(tmp_path) -> No
     assert filed.sizing_inputs.days_to_exit.unit == "days"
 
 
+def test_conviction_ratio_not_meaningful_when_price_below_bear(tmp_path) -> None:
+    conviction = _conviction_with_price_and_scenarios(tmp_path, price=79.0, bear=80.0, bull=140.0)
+
+    assert conviction.sizing_inputs.up_down_ratio.value == 0.0
+    assert conviction.sizing_inputs.up_down_ratio_state == "not_meaningful: price at or below bear case"
+    assert "price is at or below" in conviction.sizing_inputs.up_down_ratio_rationale
+    assert "state=not_meaningful: price at or below bear case" in conviction.sizing_inputs.up_down_ratio.derivation
+    assert conviction.conviction == "Low"
+    assert conviction.conviction_score.value == 1.0
+    assert conviction.lean.draft == "Pass"
+    assert "requires Senior calibration" in conviction.conviction_score.derivation
+    assert "valuation inputs inconsistent with market price; requires Senior calibration" in conviction.confidence_and_gaps["couldnt_verify"]
+
+
+def test_conviction_ratio_not_meaningful_when_price_equals_bear(tmp_path) -> None:
+    conviction = _conviction_with_price_and_scenarios(tmp_path, price=80.0, bear=80.0, bull=140.0)
+
+    assert conviction.sizing_inputs.up_down_ratio.value == 0.0
+    assert conviction.sizing_inputs.up_down_ratio_state == "not_meaningful: price at or below bear case"
+    assert conviction.conviction == "Low"
+    assert conviction.conviction_score.value == 1.0
+    assert conviction.lean.draft == "Pass"
+
+
+def test_conviction_ratio_not_meaningful_when_price_just_above_bear(tmp_path) -> None:
+    conviction = _conviction_with_price_and_scenarios(tmp_path, price=80.5, bear=80.0, bull=140.0)
+
+    assert conviction.sizing_inputs.up_down_ratio.value == 0.0
+    assert conviction.sizing_inputs.up_down_ratio_state == "not_meaningful: price approximately at bear case"
+    assert "less than 1 USD/share above" in conviction.sizing_inputs.up_down_ratio_rationale
+    assert conviction.conviction == "Low"
+    assert conviction.conviction_score.value == 1.0
+    assert conviction.lean.draft == "Pass"
+
+
+def test_conviction_ratio_meaningful_in_normal_case(tmp_path) -> None:
+    conviction = _conviction_with_price_and_scenarios(tmp_path, price=100.0, bear=80.0, bull=140.0)
+
+    assert conviction.sizing_inputs.up_down_ratio.value == 2.0
+    assert conviction.sizing_inputs.up_down_ratio_state == "meaningful"
+    assert "up/down ratio =" in conviction.sizing_inputs.up_down_ratio_rationale
+    assert conviction.conviction == "High"
+    assert conviction.conviction_score.value == 7.0
+    assert conviction.lean.draft == "Buy"
+    assert "valuation inputs inconsistent with market price; requires Senior calibration" not in conviction.confidence_and_gaps["couldnt_verify"]
+
+
 def test_review_packager_files_reloadable_final_handoff(tmp_path) -> None:
     storage = LocalStorage(tmp_path)
     payload = resolver.analyze("AAPL", as_of=RUN_DATE, storage=storage)
@@ -273,3 +320,28 @@ def _current_payload(storage: LocalStorage, *, ticker: str, method: str) -> dict
             valuation_deferred=None if method == "DCF" else method_directive["fallback_behavior"],
         ),
     )
+
+
+def _conviction_with_price_and_scenarios(tmp_path, *, price: float, bear: float, bull: float) -> ConvictionArtifact:
+    storage = LocalStorage(tmp_path)
+    resolver.analyze("UBER", as_of=RUN_DATE, storage=storage)
+    payload = SynthesisPayload.model_validate(_current_payload(storage, ticker="UBER", method="DCF"))
+    run_dir = "runs/UBER/2026-07-03"
+
+    assert payload.handoff.price is not None
+    handoff = payload.handoff.model_copy(update={"price": payload.handoff.price.model_copy(update={"value": price})})
+    scenarios = []
+    for scenario in payload.scenarios.scenarios:
+        if scenario.value is None:
+            scenarios.append(scenario)
+            continue
+        if scenario.name == "bear":
+            scenarios.append(scenario.model_copy(update={"value": scenario.value.model_copy(update={"value": bear})}))
+        elif scenario.name == "bull":
+            scenarios.append(scenario.model_copy(update={"value": scenario.value.model_copy(update={"value": bull})}))
+        else:
+            scenarios.append(scenario)
+    scenario_set = payload.scenarios.model_copy(update={"scenarios": scenarios})
+    adjusted = payload.model_copy(update={"handoff": handoff, "scenarios": scenario_set})
+
+    return build_conviction(adjusted, storage=storage, run_dir=run_dir)
