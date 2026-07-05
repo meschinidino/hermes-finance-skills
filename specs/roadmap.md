@@ -91,6 +91,7 @@ Routing table, escalation matrix, parallelism, KILL halt, revisit triggers, C-5 
 ### M5 — Calibration + performance reviews
 `D-4 Calibration` analytics (hit-rate by conviction band, directional bias, leak-by-phase) + the routing-correctness and escalation-correctness checks.
 **Done:** the org measures its own outcome quality and health over time.
+**Spec:** `specs/2026-07-05-m5-calibration-performance/`
 
 ### M6 — Hardening + extensions *(later)*
 Worked-example exemplar on a real ticker (highest-ROI learning aid); containerize for Hermes/Azure deploy; then the v4 non-US extension (per-country tax, country-risk premium, currency).
