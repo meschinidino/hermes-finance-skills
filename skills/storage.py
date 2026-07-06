@@ -108,24 +108,38 @@ class LocalStorage:
 
     def append_calibration_review(self, review: CalibrationReview) -> None:
         record = CalibrationReview.model_validate(review)
+        payload_json = _payload_json(record)
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute(
-                """
-                insert into calibration_reviews (
-                    call_id, reviewed_at, what_happened, cruxes_held_json,
-                    cruxes_broke_json, right_for_the_reasons, payload_json
-                ) values (?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    record.call_id,
-                    record.reviewed_at.isoformat(),
-                    record.what_happened,
-                    json.dumps(record.cruxes_held, sort_keys=True),
-                    json.dumps(record.cruxes_broke, sort_keys=True),
-                    int(record.right_for_the_reasons),
-                    _payload_json(record),
-                ),
-            )
+            if _calibration_call_payload(conn, record.call_id) is None:
+                raise ValueError(f"unknown calibration call id: {record.call_id}")
+            existing = conn.execute(
+                "select payload_json from calibration_reviews where call_id = ?",
+                (record.call_id,),
+            ).fetchall()
+            if any(row[0] == payload_json for row in existing):
+                return
+            try:
+                conn.execute(
+                    """
+                    insert into calibration_reviews (
+                        call_id, reviewed_at, what_happened, cruxes_held_json,
+                        cruxes_broke_json, right_for_the_reasons, payload_json
+                    ) values (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        record.call_id,
+                        record.reviewed_at.isoformat(),
+                        record.what_happened,
+                        json.dumps(record.cruxes_held, sort_keys=True),
+                        json.dumps(record.cruxes_broke, sort_keys=True),
+                        int(record.right_for_the_reasons),
+                        payload_json,
+                    ),
+                )
+            except sqlite3.IntegrityError as exc:
+                if _calibration_review_payload_exists(conn, record.call_id, payload_json):
+                    return
+                raise ValueError(f"calibration review insert conflict for call_id: {record.call_id}") from exc
             conn.commit()
 
     def append_routing_correctness_review(self, review: RoutingCorrectnessReview) -> None:
@@ -338,6 +352,12 @@ class LocalStorage:
             conn.execute("create index if not exists idx_calibration_calls_ticker on calibration_calls(ticker)")
             conn.execute("create index if not exists idx_calibration_reviews_call_id on calibration_reviews(call_id)")
             conn.execute(
+                """
+                create unique index if not exists idx_calibration_reviews_call_payload
+                on calibration_reviews(call_id, payload_json)
+                """
+            )
+            conn.execute(
                 "create index if not exists idx_routing_correctness_reviews_ticker on routing_correctness_reviews(ticker)"
             )
             conn.execute(
@@ -348,6 +368,21 @@ class LocalStorage:
 
 def _payload_json(record: Any) -> str:
     return json.dumps(record.model_dump(mode="json"), sort_keys=True)
+
+
+def _calibration_call_payload(conn: sqlite3.Connection, call_id: str) -> str | None:
+    row = conn.execute("select payload_json from calibration_calls where id = ?", (call_id,)).fetchone()
+    if row is None:
+        return None
+    return str(row[0])
+
+
+def _calibration_review_payload_exists(conn: sqlite3.Connection, call_id: str, payload_json: str) -> bool:
+    row = conn.execute(
+        "select 1 from calibration_reviews where call_id = ? and payload_json = ?",
+        (call_id, payload_json),
+    ).fetchone()
+    return row is not None
 
 
 def _execute_idempotent_insert(

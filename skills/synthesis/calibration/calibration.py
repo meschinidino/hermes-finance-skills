@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import ConfigDict, field_validator, model_validator
 
@@ -59,6 +59,33 @@ class CalibrationReview(StrictModel):
         if not str(value or "").strip():
             raise ValueError("calibration review text fields must be non-empty")
         return value
+
+
+def record_calibration_review(storage: Any, review_payload: dict[str, Any]) -> CalibrationReview:
+    missing = [
+        name
+        for name in ("append_calibration_review", "get_calibration_call")
+        if not callable(getattr(storage, name, None))
+    ]
+    if missing:
+        raise TypeError(f"storage does not implement CalibrationStore methods: {', '.join(missing)}")
+
+    raw_call_id = review_payload.get("call_id")
+    if not isinstance(raw_call_id, str) or not raw_call_id.strip():
+        raise ValueError("review requires call_id")
+    call_id = raw_call_id.strip()
+    if storage.get_calibration_call(call_id) is None:
+        raise ValueError(f"unknown calibration call id: {call_id}")
+
+    normalized_payload = {
+        **review_payload,
+        "call_id": call_id,
+        "cruxes_held": review_payload.get("cruxes_held", []),
+        "cruxes_broke": review_payload.get("cruxes_broke", []),
+    }
+    review = CalibrationReview.model_validate(normalized_payload)
+    storage.append_calibration_review(review)
+    return review
 
 
 class RoutingCorrectnessReview(StrictModel):
