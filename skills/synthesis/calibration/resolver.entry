@@ -1,0 +1,11 @@
+D-4 Calibration
+triggers:
+  - analyze terminal final_handoff: append CalibrationCall, RoutingCorrectnessReview, and EscalationCorrectnessReview records.
+  - analyze terminal halted path: append RoutingCorrectnessReview and EscalationCorrectnessReview records only.
+  - python -m resolver calibration-review: validate and append a CalibrationReview for an existing call_id.
+  - python -m resolver calibration-report: print CalibrationAnalytics from the local CalibrationStore.
+constraints:
+  - no valuation logic
+  - no prompts
+  - no Senior touchpoints
+  - no resolver.py or storage.py ownership

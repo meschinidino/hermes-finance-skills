@@ -261,8 +261,17 @@ class RouteRecorder:
             )
         )
 
-    def manifest_payload(self) -> dict[str, Any]:
-        return {"events": [event.model_dump(mode="json") for event in self.events]}
+    def snapshot(self, *, halted: bool = False) -> list[RouteEvent]:
+        events = list(self.events)
+        if halted and events:
+            events[-1] = events[-1].model_copy(update={"halted": True})
+        return events
+
+    def manifest_payload(self, *, run_id: str | None = None) -> dict[str, Any]:
+        payload: dict[str, Any] = {"events": [event.model_dump(mode="json") for event in self.events]}
+        if run_id is not None:
+            payload["run_id"] = run_id
+        return payload
 
 
 def normalize_identity_value(value: str) -> str:

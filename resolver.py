@@ -2,18 +2,24 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
+import uuid
 from datetime import date
 from pathlib import Path
 from typing import Any
+
+from pydantic import ValidationError
 
 from skills.audit import audit_analyst_artifact, audit_artifact, audit_m1_handoff, audit_senior_decision_package, audit_senior_review_package
 from skills.config import load_config
 from skills.control_flow import (
     AnalystIdentity,
     AzureFoundrySenior,
+    DOCUMENTED_ROUTE_STEPS,
     IdentityAuditError,
     LiveSeniorAPIError,
     RouteAuditError,
+    RouteEvent,
     RouteRecorder,
     analyst_identity_from_adapter,
     assert_independent,
@@ -35,11 +41,17 @@ from skills.research.risk.risk import audit_risk_artifact, build_risk_artifact
 from skills.research.scenarios.scenarios import audit_scenario_set, build_scenario_set_artifact
 from skills.serialization import artifact_model_to_payload
 from skills.storage import LocalStorage
+from skills.synthesis.calibration.calibration import (
+    CalibrationCall,
+    EscalationCorrectnessReview,
+    RoutingCorrectnessReview,
+    record_calibration_review,
+)
 from skills.synthesis.conviction.conviction import build_conviction
 from skills.synthesis.current_payload import CurrentSynthesisInput, assemble_current_payload
 from skills.synthesis.handoff.handoff import build_handoff
 from skills.synthesis.m4b_payload import SynthesisPayload
-from skills.synthesis.review_packager.review_packager import build_final_lean_review_package, build_review_package
+from skills.synthesis.review_packager.review_packager import FinalHandoff, build_final_lean_review_package, build_review_package
 from skills.valuation.dcf.dcf import build_dcf_artifacts
 from skills.valuation.method_router.method_router import route_method
 from skills.valuation.normalize.normalize import normalize_financials
@@ -64,6 +76,7 @@ def analyze(
         raise ValueError("ticker is required")
 
     run_date = as_of or date.today()
+    run_id = uuid.uuid4().hex
     config = load_config(config_path)
     active_storage = storage or LocalStorage()
     active_senior = senior or _OfflineSenior()
@@ -140,10 +153,12 @@ def analyze(
             schema_version=config.schema_version,
             ticker=normalized_ticker,
             as_of=run_date,
+            run_id=run_id,
             gate="business_early_gate",
             reason=str(exc),
             evidence_paths=[business_path],
             senior=active_senior,
+            route_events=route.snapshot(halted=True),
         )
     except (IdentityAuditError, GateWiringError) as exc:
         return _identity_audit_halt(
@@ -152,10 +167,12 @@ def analyze(
             schema_version=config.schema_version,
             ticker=normalized_ticker,
             as_of=run_date,
+            run_id=run_id,
             gate="business_early_gate",
             reason=str(exc),
             evidence_paths=[business_path],
             senior=active_senior,
+            route_events=route.snapshot(halted=True),
         )
     route.record("EARLY-GATE", produced_artifacts=[f"{run_dir}/business_early_gate.json"], senior_touchpoint="early_gate")
     if gate_result.decision == "NO-GO":
@@ -165,11 +182,13 @@ def analyze(
             schema_version=config.schema_version,
             ticker=normalized_ticker,
             as_of=run_date,
+            run_id=run_id,
             halt_kind="business_no_go",
             gate="business_early_gate",
             reason=gate_result.rationale,
             evidence_paths=[business_path, f"{run_dir}/business_early_gate.json"],
             senior=active_senior,
+            route_events=route.snapshot(halted=True),
         )
         payload["business"] = active_storage.get_json(business_path)
         payload["early_gate"] = active_storage.get_json(f"{run_dir}/business_early_gate.json")
@@ -242,11 +261,14 @@ def analyze(
             schema_version=config.schema_version,
             ticker=normalized_ticker,
             as_of=run_date,
+            run_id=run_id,
             halt_kind="gate_kill",
             gate="B-4",
             reason=gate_card.kill_reason or "gate card verdict was KILL",
             evidence_paths=[f"{run_dir}/gate_card.json"],
             senior=active_senior,
+            route_events=route.snapshot(halted=True),
+            method=None,
         )
     gate_card_review = collect_accountant_ratifiables(
         gate_card,
@@ -393,10 +415,13 @@ def analyze(
             schema_version=config.schema_version,
             ticker=normalized_ticker,
             as_of=run_date,
+            run_id=run_id,
             gate="consolidated_ratification",
             reason=str(exc),
             evidence_paths=[f"{run_dir}/senior_review_package.json"],
             senior=active_senior,
+            route_events=route.snapshot(halted=True),
+            method=method_directive.method,
         )
     except IdentityAuditError as exc:
         return _identity_audit_halt(
@@ -405,10 +430,13 @@ def analyze(
             schema_version=config.schema_version,
             ticker=normalized_ticker,
             as_of=run_date,
+            run_id=run_id,
             gate="consolidated_ratification",
             reason=str(exc),
             evidence_paths=[f"{run_dir}/senior_review_package.json"],
             senior=active_senior,
+            route_events=route.snapshot(halted=True),
+            method=method_directive.method,
         )
     audit_senior_decision_package(senior_decision_package, storage=active_storage, path=f"{run_dir}/senior_decision_package.json")
     route.record(
@@ -461,10 +489,13 @@ def analyze(
             schema_version=config.schema_version,
             ticker=normalized_ticker,
             as_of=run_date,
+            run_id=run_id,
             gate="final_lean_ratification",
             reason=str(exc),
             evidence_paths=[f"{run_dir}/final_lean_review_package.json"],
             senior=active_senior,
+            route_events=route.snapshot(halted=True),
+            method=method_directive.method,
         )
     except IdentityAuditError as exc:
         return _identity_audit_halt(
@@ -473,10 +504,13 @@ def analyze(
             schema_version=config.schema_version,
             ticker=normalized_ticker,
             as_of=run_date,
+            run_id=run_id,
             gate="final_lean_ratification",
             reason=str(exc),
             evidence_paths=[f"{run_dir}/final_lean_review_package.json"],
             senior=active_senior,
+            route_events=route.snapshot(halted=True),
+            method=method_directive.method,
         )
     audit_senior_decision_package(final_lean_decision_package, storage=active_storage, path=f"{run_dir}/final_lean_decision_package.json")
     route.record(
@@ -493,6 +527,7 @@ def analyze(
             schema_version=config.schema_version,
             ticker=normalized_ticker,
             as_of=run_date,
+            run_id=run_id,
             halt_kind="senior_overturn_without_replacement",
             gate="final_lean_ratification",
             reason="Senior overturned the final Buy/Watch/Pass lean without providing a replacement final.",
@@ -500,6 +535,8 @@ def analyze(
             senior=active_senior,
             replacement_required=True,
             replacement_provided=False,
+            route_events=route.snapshot(halted=True),
+            method=method_directive.method,
         )
         payload["final_lean_review_package"] = active_storage.get_json(f"{run_dir}/final_lean_review_package.json")
         payload["final_lean_decision_package"] = active_storage.get_json(f"{run_dir}/final_lean_decision_package.json")
@@ -519,22 +556,49 @@ def analyze(
             schema_version=config.schema_version,
             ticker=normalized_ticker,
             as_of=run_date,
+            run_id=run_id,
             halt_kind="route_audit_violation",
             gate="route_audit",
             reason=str(exc),
             evidence_paths=[f"{run_dir}/senior_decision_package.json", f"{run_dir}/final_lean_decision_package.json"],
             senior=active_senior,
+            route_events=route.snapshot(halted=True),
+            method=method_directive.method,
         )
-    final_payload = artifact_model_to_payload(
-        build_review_package(
-            synthesis_payload,
-            conviction,
-            storage=active_storage,
-            run_dir=run_dir,
-            lean_decision_package=final_lean_decision_package,
-        )
+    final_handoff = build_review_package(
+        synthesis_payload,
+        conviction,
+        storage=active_storage,
+        run_dir=run_dir,
+        lean_decision_package=final_lean_decision_package,
     )
-    active_storage.put_json(f"{run_dir}/route_manifest.json", route.manifest_payload())
+    final_payload = artifact_model_to_payload(final_handoff)
+    route_manifest_path = f"{run_dir}/route_manifest.json"
+    active_storage.put_json(route_manifest_path, route.manifest_payload(run_id=run_id))
+    _append_calibration_call(
+        active_storage,
+        run_id=run_id,
+        final_handoff=final_handoff,
+        run_dir=run_dir,
+        terminal_artifact_path=f"{run_dir}/final_handoff.json",
+        route_manifest_path=route_manifest_path,
+        method=method_directive.method,
+        asset_class=method_directive.asset_class,
+        valuation_deferred_reason=None if method_directive.method == "DCF" else method_directive.fallback_behavior,
+    )
+    _append_route_correctness_reviews(
+        active_storage,
+        run_id=run_id,
+        ticker=normalized_ticker,
+        as_of=run_date,
+        run_dir=run_dir,
+        terminal_status="final_handoff",
+        terminal_artifact_path=f"{run_dir}/final_handoff.json",
+        route_manifest_path=route_manifest_path,
+        method=method_directive.method,
+        route_events=route.snapshot(),
+        halt_kind=None,
+    )
     return final_payload
 
 
@@ -676,10 +740,13 @@ def _identity_audit_halt(
     schema_version: str,
     ticker: str,
     as_of: date,
+    run_id: str,
     gate: str,
     reason: str,
     evidence_paths: list[str],
     senior: Senior,
+    route_events: list[RouteEvent],
+    method: str | None = None,
 ) -> dict[str, Any]:
     return _halt(
         storage,
@@ -687,11 +754,14 @@ def _identity_audit_halt(
         schema_version=schema_version,
         ticker=ticker,
         as_of=as_of,
+        run_id=run_id,
         halt_kind="identity_audit_violation",
         gate=gate,
         reason=reason,
         evidence_paths=evidence_paths,
         senior=senior,
+        route_events=route_events,
+        method=method,
     )
 
 
@@ -702,10 +772,13 @@ def _live_senior_api_halt(
     schema_version: str,
     ticker: str,
     as_of: date,
+    run_id: str,
     gate: str,
     reason: str,
     evidence_paths: list[str],
     senior: Senior,
+    route_events: list[RouteEvent],
+    method: str | None = None,
 ) -> dict[str, Any]:
     return _halt(
         storage,
@@ -713,11 +786,14 @@ def _live_senior_api_halt(
         schema_version=schema_version,
         ticker=ticker,
         as_of=as_of,
+        run_id=run_id,
         halt_kind="live_senior_api_failure",
         gate=gate,
         reason=reason,
         evidence_paths=evidence_paths,
         senior=senior,
+        route_events=route_events,
+        method=method,
     )
 
 
@@ -735,6 +811,7 @@ def _halt(
     schema_version: str,
     ticker: str,
     as_of: date,
+    run_id: str,
     halt_kind,
     gate: str,
     reason: str,
@@ -742,9 +819,11 @@ def _halt(
     senior: Senior | None = None,
     replacement_required: bool = False,
     replacement_provided: bool = False,
+    route_events: list[RouteEvent] | None = None,
+    method: str | None = None,
 ) -> dict[str, Any]:
     senior_identity = senior_identity_from_adapter(senior) if senior is not None else None
-    return file_kill_memo(
+    payload = file_kill_memo(
         storage=storage,
         run_dir=run_dir,
         header=_header(schema_version, "KILL"),
@@ -758,6 +837,338 @@ def _halt(
         replacement_required=replacement_required,
         replacement_provided=replacement_provided,
     )
+    route_manifest_path = f"{run_dir}/route_manifest.json"
+    live_route_events = route_events or []
+    storage.put_json(
+        route_manifest_path,
+        {
+            "run_id": run_id,
+            "events": [event.model_dump(mode="json") for event in live_route_events],
+        },
+    )
+    _append_route_correctness_reviews(
+        storage,
+        run_id=run_id,
+        ticker=ticker,
+        as_of=as_of,
+        run_dir=run_dir,
+        terminal_status="halted",
+        terminal_artifact_path=payload["kill_memo_path"],
+        route_manifest_path=route_manifest_path,
+        method=method,
+        route_events=live_route_events,
+        halt_kind=str(halt_kind),
+    )
+    return payload
+
+
+def _append_calibration_call(
+    storage: Storage,
+    *,
+    run_id: str,
+    final_handoff: FinalHandoff,
+    run_dir: str,
+    terminal_artifact_path: str,
+    route_manifest_path: str,
+    method: str,
+    asset_class: str,
+    valuation_deferred_reason: str | None,
+) -> None:
+    _require_calibration_store(storage, required=("append_calibration_call",))
+
+    base_value = _scenario_value(final_handoff.valuation_range, "base")
+    bear_value = _scenario_value(final_handoff.valuation_range, "bear")
+    if bear_value is None:
+        bear_value = _number_value(final_handoff.risk.bear_case_value)
+    if base_value is None:
+        if method == "DCF":
+            raise RuntimeError("DCF calibration call requires base scenario value")
+        base_value = _number_value(final_handoff.price)
+    if bear_value is None:
+        raise RuntimeError("calibration call requires bear scenario or risk bear-case value")
+    call = CalibrationCall(
+        id=f"{final_handoff.ticker}:{final_handoff.as_of.isoformat()}:{run_id}",
+        date=final_handoff.as_of,
+        ticker=final_handoff.ticker,
+        lean=final_handoff.lean.final or final_handoff.lean.draft,
+        conviction=final_handoff.conviction,
+        conviction_score=int(round(final_handoff.conviction_score.value)),
+        base_value=base_value,
+        bear_value=bear_value,
+        review_by=final_handoff.review_by,
+        kill_metric=_kill_metric_text(final_handoff.risk.kill_metric),
+    )
+    storage.append_calibration_call(call)  # type: ignore[attr-defined]
+
+
+def _append_route_correctness_reviews(
+    storage: Storage,
+    *,
+    run_id: str,
+    ticker: str,
+    as_of: date,
+    run_dir: str,
+    terminal_status: str,
+    terminal_artifact_path: str,
+    route_manifest_path: str | None,
+    method: str | None,
+    route_events: list[RouteEvent],
+    halt_kind: str | None,
+) -> None:
+    _require_calibration_store(
+        storage,
+        required=("append_routing_correctness_review", "append_escalation_correctness_review"),
+    )
+
+    expected_steps = _expected_route_steps(method, terminal_status, route_events)
+    actual_steps = [event.step_id for event in route_events]
+    routing_correct, routing_findings = _routing_health_findings(
+        route_events,
+        method=method,
+        terminal_status=terminal_status,
+        halt_kind=halt_kind,
+    )
+    escalation_correct, escalation_findings = _escalation_health_findings(
+        route_events,
+        terminal_status=terminal_status,
+        halt_kind=halt_kind,
+    )
+    routing_review = RoutingCorrectnessReview(
+        id=f"routing:{ticker}:{as_of.isoformat()}:{run_id}",
+        date=as_of,
+        ticker=ticker,
+        run_id=run_id,
+        expected_route=" > ".join(expected_steps) or "none",
+        actual_route=" > ".join(actual_steps) or "none",
+        correct=routing_correct,
+        rationale=_terminal_rationale(
+            routing_findings,
+            terminal_status=terminal_status,
+            terminal_artifact_path=terminal_artifact_path,
+            route_manifest_path=route_manifest_path,
+            method=method,
+            halt_kind=halt_kind,
+            success="route matched documented terminal path",
+        ),
+    )
+    storage.append_routing_correctness_review(routing_review)  # type: ignore[attr-defined]
+    _append_escalation_reviews(
+        storage,
+        run_id=run_id,
+        ticker=ticker,
+        as_of=as_of,
+        route_events=route_events,
+        terminal_status=terminal_status,
+        halt_kind=halt_kind,
+        correct=escalation_correct,
+        findings=escalation_findings,
+    )
+
+
+def _require_calibration_store(storage: Storage, *, required: tuple[str, ...]) -> None:
+    missing = [name for name in required if not callable(getattr(storage, name, None))]
+    if missing:
+        raise RuntimeError(f"storage does not implement CalibrationStore methods: {', '.join(missing)}")
+
+
+def _append_escalation_reviews(
+    storage: Storage,
+    *,
+    run_id: str,
+    ticker: str,
+    as_of: date,
+    route_events: list[RouteEvent],
+    terminal_status: str,
+    halt_kind: str | None,
+    correct: bool,
+    findings: list[str],
+) -> None:
+    for index, touchpoint in enumerate(_escalation_review_touchpoints(route_events, terminal_status, halt_kind)):
+        review = EscalationCorrectnessReview(
+            id=f"escalation:{touchpoint}:{ticker}:{as_of.isoformat()}:{run_id}:{index}",
+            date=as_of,
+            ticker=ticker,
+            run_id=run_id,
+            touchpoint=touchpoint,
+            expected_escalation=_expected_escalation_text(touchpoint, terminal_status, halt_kind),
+            actual_escalation=_actual_escalation_text(touchpoint, route_events, terminal_status, halt_kind),
+            correct=correct,
+            rationale=_terminal_rationale(
+                findings,
+                terminal_status=terminal_status,
+                terminal_artifact_path=None,
+                route_manifest_path=None,
+                method=None,
+                halt_kind=halt_kind,
+                success="Senior escalation matched documented terminal behavior",
+            ),
+        )
+        storage.append_escalation_correctness_review(review)  # type: ignore[attr-defined]
+
+
+def _escalation_review_touchpoints(
+    route_events: list[RouteEvent],
+    terminal_status: str,
+    halt_kind: str | None,
+) -> list[str]:
+    touchpoints = _senior_touchpoints(route_events)
+    if touchpoints:
+        return touchpoints
+    if terminal_status == "halted" and halt_kind in {"business_no_go", "identity_audit_violation", "live_senior_api_failure", "gate_kill"}:
+        return ["early_gate"]
+    return ["final_lean_ratification"] if terminal_status == "final_handoff" else ["early_gate"]
+
+
+def _expected_escalation_text(touchpoint: str, terminal_status: str, halt_kind: str | None) -> str:
+    if terminal_status == "final_handoff":
+        return f"{touchpoint} occurs once on the documented GO path"
+    if halt_kind in {"identity_audit_violation", "live_senior_api_failure"}:
+        return f"{touchpoint} fails closed before unsafe downstream progress"
+    if halt_kind == "business_no_go":
+        return "early_gate returns NO-GO and halts before M3 downstream work"
+    if halt_kind == "senior_overturn_without_replacement":
+        return "final_lean_ratification halt files KillMemo before D-3 handoff packaging"
+    if halt_kind == "route_audit_violation":
+        return "route audit violation halts before returning final handoff"
+    if halt_kind == "gate_kill":
+        return "gate KILL halts before method routing and final synthesis"
+    return f"{touchpoint} follows documented halt behavior"
+
+
+def _actual_escalation_text(
+    touchpoint: str,
+    route_events: list[RouteEvent],
+    terminal_status: str,
+    halt_kind: str | None,
+) -> str:
+    observed = _senior_touchpoints(route_events)
+    observed_text = " > ".join(observed) if observed else "none"
+    return f"terminal_status={terminal_status}; halt_kind={halt_kind or 'none'}; observed_touchpoints={observed_text}; evaluated_touchpoint={touchpoint}"
+
+
+def _terminal_rationale(
+    findings: list[str],
+    *,
+    terminal_status: str,
+    terminal_artifact_path: str | None,
+    route_manifest_path: str | None,
+    method: str | None,
+    halt_kind: str | None,
+    success: str,
+) -> str:
+    details = [
+        f"terminal_status={terminal_status}",
+        f"method={method or 'not_routed'}",
+        f"halt_kind={halt_kind or 'none'}",
+    ]
+    if terminal_artifact_path:
+        details.append(f"terminal_artifact={terminal_artifact_path}")
+    if route_manifest_path:
+        details.append(f"route_manifest={route_manifest_path}")
+    if findings:
+        details.append("findings=" + " | ".join(findings))
+    else:
+        details.append(success)
+    return "; ".join(details)
+
+
+def _scenario_value(valuation: Any, scenario_name: str) -> float | None:
+    scenario_values = getattr(valuation, "scenario_values", None)
+    if isinstance(scenario_values, dict):
+        value = scenario_values.get(scenario_name)
+        return _number_value(value)
+    scenarios = getattr(valuation, "scenarios", None)
+    if isinstance(scenarios, list):
+        for scenario in scenarios:
+            if getattr(scenario, "name", None) == scenario_name:
+                return _number_value(getattr(scenario, "value", None))
+    return None
+
+
+def _number_value(value: Any) -> float | None:
+    if value is None:
+        return None
+    if isinstance(value, dict):
+        value = value.get("value")
+    else:
+        value = getattr(value, "value", value)
+    if value is None:
+        return None
+    return float(value)
+
+
+def _kill_metric_text(kill_metric: Any) -> str:
+    metric = str(getattr(kill_metric, "metric", "")).strip()
+    direction = str(getattr(kill_metric, "threshold_direction", "")).strip()
+    threshold = _number_value(getattr(kill_metric, "threshold_value", None))
+    if threshold is None:
+        return " ".join(part for part in (metric, direction) if part)
+    return " ".join(part for part in (metric, direction, f"{threshold:g}") if part)
+
+
+def _expected_route_steps(method: str | None, terminal_status: str, route_events: list[RouteEvent]) -> list[str]:
+    if terminal_status == "halted":
+        return [event.step_id for event in route_events]
+    expected = list(DOCUMENTED_ROUTE_STEPS)
+    if method != "DCF":
+        expected.remove("B-3")
+        expected.remove("B-5")
+    return expected
+
+
+def _routing_health_findings(
+    route_events: list[RouteEvent],
+    *,
+    method: str | None,
+    terminal_status: str,
+    halt_kind: str | None,
+) -> tuple[bool, list[str]]:
+    findings: list[str] = []
+    if terminal_status == "final_handoff":
+        try:
+            audit_route_events(route_events, method=method or "unknown", storage=None)
+        except RouteAuditError as exc:
+            findings.append(str(exc))
+    else:
+        if not route_events:
+            findings.append("halted route has no live RouteRecorder events")
+        if halt_kind == "route_audit_violation":
+            findings.append("route audit violation halted before final handoff")
+        if any(event.step_id == "D-3" for event in route_events):
+            findings.append("halted route reached D-3 before returning a KillMemo")
+    return (not findings, findings)
+
+
+def _escalation_health_findings(
+    route_events: list[RouteEvent],
+    *,
+    terminal_status: str,
+    halt_kind: str | None,
+) -> tuple[bool, list[str]]:
+    touchpoints = _senior_touchpoints(route_events)
+    findings: list[str] = []
+    if terminal_status == "final_handoff":
+        expected = ["early_gate", "consolidated_ratification", "final_lean_ratification"]
+        if touchpoints != expected:
+            findings.append(f"expected Senior touchpoints {expected}, got {touchpoints}")
+    else:
+        allowed_halts = {
+            "gate_kill",
+            "business_no_go",
+            "senior_overturn_without_replacement",
+            "route_audit_violation",
+            "identity_audit_violation",
+            "live_senior_api_failure",
+        }
+        if halt_kind not in allowed_halts:
+            findings.append(f"unknown halt kind: {halt_kind}")
+        if halt_kind == "business_no_go" and touchpoints != ["early_gate"]:
+            findings.append(f"business NO-GO should stop after early gate, got {touchpoints}")
+    return (not findings, findings)
+
+
+def _senior_touchpoints(route_events: list[RouteEvent]) -> list[str]:
+    return [event.senior_touchpoint for event in route_events if event.senior_touchpoint != "none"]
 
 
 def _header(schema_version: str, produced_by: str):
@@ -796,7 +1207,43 @@ def _base_rate_anchor_paths(scenarios) -> list[str]:
     return paths
 
 
-def main() -> None:
+def _run_calibration_report_command(argv: list[str]) -> None:
+    from skills.synthesis.calibration.calibration import build_calibration_analytics
+
+    parser = argparse.ArgumentParser(description="Print D-4 calibration analytics as JSON.")
+    parser.add_argument("--as-of", help="Include records on or before YYYY-MM-DD.")
+    parser.add_argument("--data-root", default="data", help="Storage root containing pack.db.")
+    args = parser.parse_args(argv)
+
+    try:
+        report = build_calibration_analytics(LocalStorage(root=args.data_root), as_of=args.as_of)
+    except (TypeError, ValueError) as exc:
+        print(
+            json.dumps(
+                {
+                    "status": "rejected",
+                    "error": {
+                        "code": "calibration_report_error",
+                        "message": str(exc),
+                    },
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        raise SystemExit(1) from None
+    print(json.dumps(report.model_dump(mode="json"), indent=2, sort_keys=True))
+
+
+def main(argv: list[str] | None = None) -> None:
+    raw_args = list(sys.argv[1:] if argv is None else argv)
+    if raw_args and raw_args[0] == "calibration-review":
+        _main_calibration_review(raw_args[1:])
+        return
+    if raw_args and raw_args[0] == "calibration-report":
+        _run_calibration_report_command(raw_args[1:])
+        return
+
     parser = argparse.ArgumentParser(description="Run the finance skill pack resolver.")
     parser.add_argument("ticker", help="US-listed ticker to analyze")
     parser.add_argument(
@@ -805,7 +1252,7 @@ def main() -> None:
         default="offline",
         help="Senior adapter to use. azure-foundry fails closed if environment identity is incomplete.",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(raw_args)
     try:
         senior = AzureFoundrySenior.from_env() if args.senior == "azure-foundry" else None
         print(json.dumps(analyze(args.ticker, senior=senior), indent=2, sort_keys=True))
@@ -845,6 +1292,110 @@ def main() -> None:
             )
         )
         raise SystemExit(1) from None
+
+
+def _main_calibration_review(argv: list[str]) -> None:
+    parser = argparse.ArgumentParser(description="Record a completed calibration review.")
+    parser.add_argument("--json-file", type=Path, help="JSON payload for the review. CLI flags override matching fields.")
+    parser.add_argument("--data-root", type=Path, default=Path("data"), help="Storage root containing pack.db.")
+    parser.add_argument("--call-id")
+    parser.add_argument("--reviewed-at")
+    parser.add_argument("--what-happened")
+    parser.add_argument("--crux-held", dest="cruxes_held", action="append", default=None)
+    parser.add_argument("--crux-broke", dest="cruxes_broke", action="append", default=None)
+    parser.add_argument("--right-for-the-reasons")
+    parser.add_argument("--primary-leak-phase")
+    args = parser.parse_args(argv)
+
+    try:
+        payload = _review_payload_from_args(args)
+        review = record_calibration_review(LocalStorage(args.data_root), payload)
+        print(json.dumps(review.model_dump(mode="json"), indent=2, sort_keys=True))
+    except (OSError, TypeError, ValueError, ValidationError, json.JSONDecodeError) as exc:
+        print(
+            json.dumps(
+                {
+                    "status": "rejected",
+                    "error": {
+                        "code": "invalid_calibration_review",
+                        "message": str(exc),
+                    },
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        raise SystemExit(1) from None
+
+
+def _review_payload_from_args(args: argparse.Namespace) -> dict[str, Any]:
+    payload: dict[str, Any] = {}
+    if args.json_file is not None:
+        raw_payload = json.loads(args.json_file.read_text(encoding="utf-8"))
+        if not isinstance(raw_payload, dict):
+            raise ValueError("--json-file must contain a JSON object")
+        payload = _calibration_review_fields(raw_payload)
+        phase = raw_payload.get("primary_leak_phase")
+        if phase is not None:
+            _parse_leak_phase(str(phase))
+
+    overrides = {
+        "call_id": args.call_id,
+        "what_happened": args.what_happened,
+        "cruxes_held": args.cruxes_held,
+        "cruxes_broke": args.cruxes_broke,
+        "right_for_the_reasons": _parse_bool(args.right_for_the_reasons) if args.right_for_the_reasons is not None else None,
+    }
+    if args.reviewed_at is not None:
+        overrides["reviewed_at"] = _parse_iso_date(args.reviewed_at).isoformat()
+    if args.primary_leak_phase is not None:
+        overrides["primary_leak_phase"] = _parse_leak_phase(args.primary_leak_phase)
+
+    for key, value in overrides.items():
+        if value is not None:
+            payload[key] = value
+    return payload
+
+
+def _calibration_review_fields(payload: dict[str, Any]) -> dict[str, Any]:
+    allowed = {
+        "id",
+        "call_id",
+        "reviewed_at",
+        "reviewed_by",
+        "outcome_direction",
+        "what_happened",
+        "cruxes_held",
+        "cruxes_broke",
+        "right_for_the_reasons",
+        "primary_leak_phase",
+        "supersedes_review_id",
+        "notes",
+    }
+    return {key: value for key, value in payload.items() if key in allowed}
+
+
+def _parse_iso_date(value: str) -> date:
+    try:
+        return date.fromisoformat(value)
+    except ValueError as exc:
+        raise ValueError(f"invalid ISO date for --reviewed-at: {value}") from exc
+
+
+def _parse_bool(value: str) -> bool:
+    normalized = value.strip().lower()
+    if normalized in {"1", "true", "t", "yes", "y"}:
+        return True
+    if normalized in {"0", "false", "f", "no", "n"}:
+        return False
+    raise ValueError(f"invalid boolean for --right-for-the-reasons: {value}")
+
+
+def _parse_leak_phase(value: str) -> str:
+    allowed = {"P0", "P1", "P2", "P3", "P4", "P5", "P6", "D2", "D3", "route", "escalation", "none"}
+    if value not in allowed:
+        raise ValueError(f"invalid primary leak phase: {value}")
+    return value
 
 
 if __name__ == "__main__":
