@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 import uuid
 from datetime import date
 from pathlib import Path
 from typing import Any
+
+from pydantic import ValidationError
 
 from skills.audit import audit_analyst_artifact, audit_artifact, audit_m1_handoff, audit_senior_decision_package, audit_senior_review_package
 from skills.config import load_config
@@ -42,6 +45,7 @@ from skills.synthesis.calibration.calibration import (
     CalibrationCall,
     EscalationCorrectnessReview,
     RoutingCorrectnessReview,
+    record_calibration_review,
 )
 from skills.synthesis.conviction.conviction import build_conviction
 from skills.synthesis.current_payload import CurrentSynthesisInput, assemble_current_payload
@@ -1204,6 +1208,10 @@ def _base_rate_anchor_paths(scenarios) -> list[str]:
 
 
 def main() -> None:
+    if len(sys.argv) > 1 and sys.argv[1] == "calibration-review":
+        _main_calibration_review(sys.argv[2:])
+        return
+
     parser = argparse.ArgumentParser(description="Run the finance skill pack resolver.")
     parser.add_argument("ticker", help="US-listed ticker to analyze")
     parser.add_argument(
@@ -1252,6 +1260,97 @@ def main() -> None:
             )
         )
         raise SystemExit(1) from None
+
+
+def _main_calibration_review(argv: list[str]) -> None:
+    parser = argparse.ArgumentParser(description="Record a completed calibration review.")
+    parser.add_argument("--json-file", type=Path, help="JSON payload for the review. CLI flags override matching fields.")
+    parser.add_argument("--data-root", type=Path, default=Path("data"), help="Storage root containing pack.db.")
+    parser.add_argument("--call-id")
+    parser.add_argument("--reviewed-at")
+    parser.add_argument("--what-happened")
+    parser.add_argument("--crux-held", dest="cruxes_held", action="append", default=None)
+    parser.add_argument("--crux-broke", dest="cruxes_broke", action="append", default=None)
+    parser.add_argument("--right-for-the-reasons")
+    parser.add_argument("--primary-leak-phase")
+    args = parser.parse_args(argv)
+
+    try:
+        payload = _review_payload_from_args(args)
+        review = record_calibration_review(LocalStorage(args.data_root), payload)
+        print(json.dumps(review.model_dump(mode="json"), indent=2, sort_keys=True))
+    except (OSError, TypeError, ValueError, ValidationError, json.JSONDecodeError) as exc:
+        print(
+            json.dumps(
+                {
+                    "status": "rejected",
+                    "error": {
+                        "code": "invalid_calibration_review",
+                        "message": str(exc),
+                    },
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        raise SystemExit(1) from None
+
+
+def _review_payload_from_args(args: argparse.Namespace) -> dict[str, Any]:
+    payload: dict[str, Any] = {}
+    if args.json_file is not None:
+        raw_payload = json.loads(args.json_file.read_text(encoding="utf-8"))
+        if not isinstance(raw_payload, dict):
+            raise ValueError("--json-file must contain a JSON object")
+        payload = _calibration_review_fields(raw_payload)
+        phase = raw_payload.get("primary_leak_phase")
+        if phase is not None:
+            _parse_leak_phase(str(phase))
+
+    overrides = {
+        "call_id": args.call_id,
+        "what_happened": args.what_happened,
+        "cruxes_held": args.cruxes_held,
+        "cruxes_broke": args.cruxes_broke,
+        "right_for_the_reasons": _parse_bool(args.right_for_the_reasons) if args.right_for_the_reasons is not None else None,
+    }
+    if args.reviewed_at is not None:
+        overrides["reviewed_at"] = _parse_iso_date(args.reviewed_at).isoformat()
+    if args.primary_leak_phase is not None:
+        _parse_leak_phase(args.primary_leak_phase)
+
+    for key, value in overrides.items():
+        if value is not None:
+            payload[key] = value
+    return payload
+
+
+def _calibration_review_fields(payload: dict[str, Any]) -> dict[str, Any]:
+    allowed = {"call_id", "reviewed_at", "what_happened", "cruxes_held", "cruxes_broke", "right_for_the_reasons"}
+    return {key: value for key, value in payload.items() if key in allowed}
+
+
+def _parse_iso_date(value: str) -> date:
+    try:
+        return date.fromisoformat(value)
+    except ValueError as exc:
+        raise ValueError(f"invalid ISO date for --reviewed-at: {value}") from exc
+
+
+def _parse_bool(value: str) -> bool:
+    normalized = value.strip().lower()
+    if normalized in {"1", "true", "t", "yes", "y"}:
+        return True
+    if normalized in {"0", "false", "f", "no", "n"}:
+        return False
+    raise ValueError(f"invalid boolean for --right-for-the-reasons: {value}")
+
+
+def _parse_leak_phase(value: str) -> str:
+    allowed = {"P0", "P1", "P2", "P3", "P4", "P5", "P6", "D2", "D3", "route", "escalation", "none"}
+    if value not in allowed:
+        raise ValueError(f"invalid primary leak phase: {value}")
+    return value
 
 
 if __name__ == "__main__":

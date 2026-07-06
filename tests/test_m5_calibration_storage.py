@@ -97,6 +97,8 @@ def test_calibration_call_append_get_and_ticker_filter_round_trip(tmp_path) -> N
 
 def test_calibration_review_append_and_call_filter_round_trip(tmp_path) -> None:
     storage = LocalStorage(tmp_path)
+    storage.append_calibration_call(_call(id="call-aapl"))
+    storage.append_calibration_call(_call(id="call-mrna", ticker="MRNA"))
     first = CalibrationReview(
         call_id="call-aapl",
         reviewed_at=date(2027, 7, 5),
@@ -120,6 +122,101 @@ def test_calibration_review_append_and_call_filter_round_trip(tmp_path) -> None:
     assert storage.list_calibration_reviews(call_id="call-aapl") == [first]
     assert storage.list_calibration_reviews(call_id="call-mrna") == [second]
     assert storage.list_calibration_reviews() == [first, second]
+
+
+def test_calibration_review_append_rejects_missing_call_id(tmp_path) -> None:
+    storage = LocalStorage(tmp_path)
+    review = CalibrationReview(
+        call_id="missing",
+        reviewed_at=date(2027, 7, 5),
+        what_happened="no matching call",
+        cruxes_held=[],
+        cruxes_broke=[],
+        right_for_the_reasons=False,
+    )
+
+    with pytest.raises(ValueError, match="unknown calibration call id: missing"):
+        storage.append_calibration_review(review)
+
+    assert storage.list_calibration_reviews() == []
+
+
+def test_calibration_review_append_is_idempotent_for_identical_payload(tmp_path) -> None:
+    storage = LocalStorage(tmp_path)
+    storage.append_calibration_call(_call(id="call-aapl"))
+    review = CalibrationReview(
+        call_id="call-aapl",
+        reviewed_at=date(2027, 7, 5),
+        what_happened="base case tracked",
+        cruxes_held=["services growth"],
+        cruxes_broke=[],
+        right_for_the_reasons=True,
+    )
+
+    storage.append_calibration_review(review)
+    storage.append_calibration_review(review)
+
+    assert storage.list_calibration_reviews() == [review]
+
+
+def test_calibration_review_insert_conflict_is_idempotent_at_sqlite_boundary(tmp_path, monkeypatch) -> None:
+    storage = LocalStorage(tmp_path)
+    storage.append_calibration_call(_call(id="call-aapl"))
+    review = CalibrationReview(
+        call_id="call-aapl",
+        reviewed_at=date(2027, 7, 5),
+        what_happened="base case tracked",
+        cruxes_held=["services growth"],
+        cruxes_broke=[],
+        right_for_the_reasons=True,
+    )
+    storage.append_calibration_review(review)
+
+    real_connect = sqlite3.connect
+
+    class EmptyRows:
+        def fetchall(self):
+            return []
+
+    class RaceConnection:
+        def __init__(self, path):
+            self._conn = real_connect(path)
+            self._masked_precheck = False
+
+        def __enter__(self):
+            self._conn.__enter__()
+            return self
+
+        def __exit__(self, *args):
+            return self._conn.__exit__(*args)
+
+        def execute(self, statement, params=()):
+            normalized = " ".join(statement.split())
+            if (
+                not self._masked_precheck
+                and normalized == "select payload_json from calibration_reviews where call_id = ?"
+            ):
+                self._masked_precheck = True
+                return EmptyRows()
+            return self._conn.execute(statement, params)
+
+        def commit(self):
+            return self._conn.commit()
+
+        @property
+        def row_factory(self):
+            return self._conn.row_factory
+
+        @row_factory.setter
+        def row_factory(self, value):
+            self._conn.row_factory = value
+
+    monkeypatch.setattr("skills.storage.sqlite3.connect", RaceConnection)
+
+    storage.append_calibration_review(review)
+
+    monkeypatch.setattr("skills.storage.sqlite3.connect", real_connect)
+    assert storage.list_calibration_reviews() == [review]
 
 
 def test_routing_and_escalation_review_append_and_ticker_filter_round_trip(tmp_path) -> None:
