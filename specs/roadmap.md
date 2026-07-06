@@ -93,9 +93,14 @@ Routing table, escalation matrix, parallelism, KILL halt, revisit triggers, C-5 
 **Done:** the org measures its own outcome quality and health over time.
 **Spec:** `specs/2026-07-05-m5-calibration-performance/`
 
-### M6 — Hardening + extensions *(later)*
+### M6 — Report Renderer
+`D-5 Report Renderer`, a deterministic presentation skill that renders an already-completed run directory into a human-readable Markdown report.
+**Done:** a final Handoff or KillMemo can be rendered on demand into a sourced report without invoking `analyze()`, LLMs, Analysts, or the Senior.
+**Spec:** `specs/2026-07-06-m6-report-renderer/`
+
+### M7 — Hardening + extensions *(later)*
 Worked-example exemplar on a real ticker (highest-ROI learning aid); containerize for Hermes/Azure deploy; then the v4 non-US extension (per-country tax, country-risk premium, currency).
 
 ---
 
-**Critical path through the build:** M0 → M1 → **M2a** → M2b → M3.1 → M3.2 → M3.3 → M3.4 → M3.5 → M3.6 → M3.7 → M4a → M4b → M4c. M5/M6 thicken a proven system. If time is short, a credible end-to-end demo exists at the end of M4c; everything after improves trust and reach, not core function.
+**Critical path through the build:** M0 → M1 → **M2a** → M2b → M3.1 → M3.2 → M3.3 → M3.4 → M3.5 → M3.6 → M3.7 → M4a → M4b → M4c. M5/M6/M7 thicken a proven system. If time is short, a credible end-to-end demo exists at the end of M4c; everything after improves trust and reach, not core function.
