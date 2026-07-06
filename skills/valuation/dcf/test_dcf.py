@@ -34,10 +34,24 @@ def test_forward_dcf_emits_three_schema_valid_scenarios() -> None:
     audit_artifact(valuation)
 
 
+def test_forward_dcf_base_rate_check_uses_current_ticker() -> None:
+    config, edgar, price, coc, normalized = _fixture_path()
+    normalized = normalized.model_copy(update={"ticker": "MSFT"})
+    valuation, _ = build_dcf_artifacts(normalized, edgar, price, coc, config)
+
+    base_assumptions = {assumption.driver: assumption for assumption in valuation.scenarios[1].assumptions}
+    expected = "EDGAR fact from normalized MSFT fixture path."
+    assert base_assumptions["starting_revenue"].base_rate_check == expected
+    assert base_assumptions["diluted_shares"].base_rate_check == expected
+
+
 def test_reverse_dcf_reports_current_fixture_price_outside_solvable_range() -> None:
     config, edgar, price, coc, normalized = _fixture_path()
     _, expectations = build_dcf_artifacts(normalized, edgar, price, coc, config)
 
+    assert "M2a" not in expectations.frame_justification
+    assert "M2b" not in expectations.frame_justification
+    assert "DCF is used for routed cash-generating operating companies" in expectations.frame_justification
     low = expectations.reverse_band_results["low"]
     high = expectations.reverse_band_results["high"]
     assert "reverse_dcf_non_convergence" in expectations.flags

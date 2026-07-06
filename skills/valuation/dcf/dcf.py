@@ -57,6 +57,7 @@ def build_forward_valuation(
 ) -> ValuationRange:
     produced = produced_at or datetime.now(timezone.utc)
     scenarios: list[Scenario] = []
+    normalized_fixture_check = f"EDGAR fact from normalized {financials.ticker} fixture path."
     for name in ("bear", "base", "bull"):
         scenario_config = config.dcf.scenarios[name]
         wacc = {
@@ -72,11 +73,11 @@ def build_forward_valuation(
             Scenario(
                 name=name,
                 assumptions=[
-                    DcfAssumption(driver="starting_revenue", value=drivers.revenue, base_rate_check="EDGAR fact from normalized AAPL fixture path."),
+                    DcfAssumption(driver="starting_revenue", value=drivers.revenue, base_rate_check=normalized_fixture_check),
                     DcfAssumption(driver="forecast_years", value=drivers.forecast_years, base_rate_check="M2a deterministic default only; duration judgment is later scope."),
                     DcfAssumption(driver="terminal_growth", value=drivers.terminal_growth, base_rate_check="M2a deterministic default only; terminal economics review is later scope."),
                     DcfAssumption(driver="net_debt", value=drivers.net_debt, base_rate_check="EDGAR-derived mechanical input."),
-                    DcfAssumption(driver="diluted_shares", value=drivers.shares, base_rate_check="EDGAR fact from normalized AAPL fixture path."),
+                    DcfAssumption(driver="diluted_shares", value=drivers.shares, base_rate_check=normalized_fixture_check),
                     DcfAssumption(driver="revenue_growth", value=drivers.revenue_growth, base_rate_check="M2a deterministic default only; base-rate checks are M2b scope."),
                     DcfAssumption(driver="nopat_margin", value=drivers.nopat_margin, base_rate_check="M2a deterministic default only; base-rate checks are M2b scope."),
                     DcfAssumption(driver="sales_to_capital", value=drivers.sales_to_capital, base_rate_check="M2a deterministic default only; base-rate checks are M2b scope."),
@@ -172,7 +173,7 @@ def build_reverse_expectations(
         wacc_band={"low": cost_of_capital.wacc_low, "high": cost_of_capital.wacc_high},
         reverse_band_results={"low": low, "high": high},
         frame="DCF",
-        frame_justification="M2a covers a plain operating-company DCF for AAPL only; method routing is deferred to M2b.",
+        frame_justification="DCF is used for routed cash-generating operating companies when the required price, cost-of-capital, and normalized filing inputs are available.",
         authoritative_output="wacc_band_edges",
         midpoint_note="The low/high WACC edge results are authoritative. Any midpoint is a convenience summary only and must not be treated as the headline implied expectation.",
         flags=flags,

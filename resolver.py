@@ -1235,6 +1235,37 @@ def _run_calibration_report_command(argv: list[str]) -> None:
     print(json.dumps(report.model_dump(mode="json"), indent=2, sort_keys=True))
 
 
+def _run_report_render_command(argv: list[str]) -> None:
+    from skills.synthesis.report_renderer import normalize_cli_output_path, normalize_cli_run_dir, render_report
+
+    parser = argparse.ArgumentParser(description="Render a completed run directory into Markdown.")
+    parser.add_argument("--run-dir", required=True, help="Completed run directory, e.g. runs/AAPL/2026-07-03 or data/runs/AAPL/2026-07-03.")
+    parser.add_argument("--output-path", help="Storage-relative Markdown output path. Defaults to report.md in the run directory.")
+    parser.add_argument("--data-root", default="data", help="Storage root containing runs/.")
+    args = parser.parse_args(argv)
+
+    try:
+        run_dir = normalize_cli_run_dir(args.run_dir, data_root=args.data_root)
+        output_path = normalize_cli_output_path(args.output_path, data_root=args.data_root) if args.output_path else None
+        result = render_report(LocalStorage(root=args.data_root), run_dir, output_path=output_path)
+    except (OSError, TypeError, ValueError, ValidationError, json.JSONDecodeError) as exc:
+        print(
+            json.dumps(
+                {
+                    "status": "rejected",
+                    "error": {
+                        "code": "report_render_error",
+                        "message": str(exc),
+                    },
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        raise SystemExit(1) from None
+    print(json.dumps(result.model_dump(mode="json"), indent=2, sort_keys=True))
+
+
 def main(argv: list[str] | None = None) -> None:
     raw_args = list(sys.argv[1:] if argv is None else argv)
     if raw_args and raw_args[0] == "calibration-review":
@@ -1242,6 +1273,9 @@ def main(argv: list[str] | None = None) -> None:
         return
     if raw_args and raw_args[0] == "calibration-report":
         _run_calibration_report_command(raw_args[1:])
+        return
+    if raw_args and raw_args[0] == "render-report":
+        _run_report_render_command(raw_args[1:])
         return
 
     parser = argparse.ArgumentParser(description="Run the finance skill pack resolver.")

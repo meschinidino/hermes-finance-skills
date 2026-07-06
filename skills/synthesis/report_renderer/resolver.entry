@@ -1,0 +1,3 @@
+trigger: render-report
+module: skills.synthesis.report_renderer
+callable: render_report

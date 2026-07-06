@@ -92,11 +92,13 @@ Routing table, escalation matrix, parallelism, KILL halt, revisit triggers, C-5 
 `D-4 Calibration` analytics (hit-rate by conviction band, directional bias, leak-by-phase) + the routing-correctness and escalation-correctness checks.
 **Done:** the org measures its own outcome quality and health over time.
 **Spec:** `specs/2026-07-05-m5-calibration-performance/`
+**Status:** M5 complete (D-4 Calibration bundle, append-only typed calibration/review/route-health SQLite tables, resolver final-Handoff call logging, halted-route health logging, local review ingestion, deterministic analytics for hit-rate by conviction band, directional bias, leak-by-phase, routing correctness, and escalation correctness). Validated with `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest`, focused D-4 tests, and resolver AAPL/MRNA smokes.
 
 ### M6 — Report Renderer
 `D-5 Report Renderer`, a deterministic presentation skill that renders an already-completed run directory into a human-readable Markdown report.
 **Done:** a final Handoff or KillMemo can be rendered on demand into a sourced report without invoking `analyze()`, LLMs, Analysts, or the Senior.
 **Spec:** `specs/2026-07-06-m6-report-renderer/`
+**Status:** M6 complete (D-5 Report Renderer bundle, deterministic Markdown report generation from completed run directories, full-Handoff and KillMemo rendering, DCF and method-deferred valuation handling, valuation input flags, provenance summary, and CLI/API entry point). Validated with `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest`, `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest skills/synthesis/report_renderer`, resolver AAPL/MRNA smokes, and report-render smokes.
 
 ### M7 — Hardening + extensions *(later)*
 Worked-example exemplar on a real ticker (highest-ROI learning aid); containerize for Hermes/Azure deploy; then the v4 non-US extension (per-country tax, country-risk premium, currency).

@@ -64,6 +64,14 @@ class LocalStorage:
     def get_json(self, path: str) -> dict[str, Any]:
         return json.loads(self._resolve(path).read_text(encoding="utf-8"))
 
+    def put_text(self, path: str, payload: str) -> None:
+        target = self._resolve(path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(payload, encoding="utf-8")
+
+    def get_text(self, path: str) -> str:
+        return self._resolve(path).read_text(encoding="utf-8")
+
     def append_log(self, table: str, payload: dict[str, Any]) -> None:
         if table != "calibration_log":
             raise ValueError("M0 only supports calibration_log")
