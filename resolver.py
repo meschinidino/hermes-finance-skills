@@ -1207,9 +1207,41 @@ def _base_rate_anchor_paths(scenarios) -> list[str]:
     return paths
 
 
-def main() -> None:
-    if len(sys.argv) > 1 and sys.argv[1] == "calibration-review":
-        _main_calibration_review(sys.argv[2:])
+def _run_calibration_report_command(argv: list[str]) -> None:
+    from skills.synthesis.calibration.calibration import build_calibration_analytics
+
+    parser = argparse.ArgumentParser(description="Print D-4 calibration analytics as JSON.")
+    parser.add_argument("--as-of", help="Include records on or before YYYY-MM-DD.")
+    parser.add_argument("--data-root", default="data", help="Storage root containing pack.db.")
+    args = parser.parse_args(argv)
+
+    try:
+        report = build_calibration_analytics(LocalStorage(root=args.data_root), as_of=args.as_of)
+    except (TypeError, ValueError) as exc:
+        print(
+            json.dumps(
+                {
+                    "status": "rejected",
+                    "error": {
+                        "code": "calibration_report_error",
+                        "message": str(exc),
+                    },
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        raise SystemExit(1) from None
+    print(json.dumps(report.model_dump(mode="json"), indent=2, sort_keys=True))
+
+
+def main(argv: list[str] | None = None) -> None:
+    raw_args = list(sys.argv[1:] if argv is None else argv)
+    if raw_args and raw_args[0] == "calibration-review":
+        _main_calibration_review(raw_args[1:])
+        return
+    if raw_args and raw_args[0] == "calibration-report":
+        _run_calibration_report_command(raw_args[1:])
         return
 
     parser = argparse.ArgumentParser(description="Run the finance skill pack resolver.")
@@ -1220,7 +1252,7 @@ def main() -> None:
         default="offline",
         help="Senior adapter to use. azure-foundry fails closed if environment identity is incomplete.",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(raw_args)
     try:
         senior = AzureFoundrySenior.from_env() if args.senior == "azure-foundry" else None
         print(json.dumps(analyze(args.ticker, senior=senior), indent=2, sort_keys=True))
@@ -1317,7 +1349,7 @@ def _review_payload_from_args(args: argparse.Namespace) -> dict[str, Any]:
     if args.reviewed_at is not None:
         overrides["reviewed_at"] = _parse_iso_date(args.reviewed_at).isoformat()
     if args.primary_leak_phase is not None:
-        _parse_leak_phase(args.primary_leak_phase)
+        overrides["primary_leak_phase"] = _parse_leak_phase(args.primary_leak_phase)
 
     for key, value in overrides.items():
         if value is not None:
@@ -1326,7 +1358,20 @@ def _review_payload_from_args(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def _calibration_review_fields(payload: dict[str, Any]) -> dict[str, Any]:
-    allowed = {"call_id", "reviewed_at", "what_happened", "cruxes_held", "cruxes_broke", "right_for_the_reasons"}
+    allowed = {
+        "id",
+        "call_id",
+        "reviewed_at",
+        "reviewed_by",
+        "outcome_direction",
+        "what_happened",
+        "cruxes_held",
+        "cruxes_broke",
+        "right_for_the_reasons",
+        "primary_leak_phase",
+        "supersedes_review_id",
+        "notes",
+    }
     return {key: value for key, value in payload.items() if key in allowed}
 
 

@@ -114,6 +114,7 @@ def test_calibration_review_append_and_call_filter_round_trip(tmp_path) -> None:
         cruxes_held=[],
         cruxes_broke=["approval timing"],
         right_for_the_reasons=False,
+        primary_leak_phase="P4",
     )
 
     storage.append_calibration_review(first)
@@ -133,6 +134,7 @@ def test_calibration_review_append_rejects_missing_call_id(tmp_path) -> None:
         cruxes_held=[],
         cruxes_broke=[],
         right_for_the_reasons=False,
+        primary_leak_phase="P4",
     )
 
     with pytest.raises(ValueError, match="unknown calibration call id: missing"):
