@@ -25,6 +25,7 @@ M4c makes the resolver path explicit and auditable. The resolver remains the onl
 | D-2 Conviction | Accountant/Synthesis | synthesis payload, Senior decisions | `conviction.json` | D-2 model validation | audit failure | none | resolver |
 | Final Lean Ratification | Senior | `conviction.json` final lean review | `final_lean_review_package.json`, `final_lean_decision_package.json` | identity independence and decision package audit | overturn without replacement KillMemo | final lean ratification | Senior |
 | D-3 Review Packager | Synthesis | synthesis payload, D-2, final lean decision | `final_handoff.json` | `FinalHandoff` validation | not run on halted paths | none | resolver |
+| D-4 Calibration | Accountant | terminal handoff or terminal halt route state, route manifest, local review payloads | `CalibrationCall`, `CalibrationReview`, `RoutingCorrectnessReview`, `EscalationCorrectnessReview`, `CalibrationAnalytics` in `data/pack.db` | pydantic record validation and CalibrationStore append checks | route health is still filed on halted paths; no CalibrationCall is filed without a final handoff | none | resolver |
 
 ## Route Behavior
 
@@ -33,6 +34,21 @@ AAPL follows the DCF route: B-6 selects `DCF`, B-3 files valuation artifacts, B-
 MRNA follows the non-DCF `rNPV` route: B-6 selects `rNPV`, B-3 and B-5 are not fabricated, and C-4 uses route-specific optionality scenario values with `valuation_deferred` context.
 
 Parallelism is deferred in M4c. The current slice is governance and correctness work; parallel execution would require a separate proof that no shared artifact writes, Senior touchpoints, or audit dependencies are reordered.
+
+## D-4 Calibration Feedback Loop
+
+D-4 is the resolver's post-terminal measurement loop. It does not affect valuation, scenario construction, Senior routing, or final handoff contents. Its only runtime dependency is a storage object that implements the typed `CalibrationStore` capability.
+
+On a successful terminal `final_handoff`, the resolver writes `route_manifest.json`, then appends:
+- one `CalibrationCall` keyed as `{ticker}:{as_of}:{run_id}`;
+- one `RoutingCorrectnessReview` comparing the observed route to the documented manifest requirements;
+- one `EscalationCorrectnessReview` for each observed Senior touchpoint.
+
+On a halted terminal path, the resolver writes the terminal `KillMemo` plus a route manifest snapshot, then appends route and escalation health reviews only. Halted paths intentionally do not append `CalibrationCall`, because there is no signed investment call to review later.
+
+The review side of the loop is explicit and separate from `analyze()`: `python -m resolver calibration-review` validates a local review payload, requires the referenced `call_id` to exist, and appends a `CalibrationReview`. `python -m resolver calibration-report` reads the append-only call, review, routing, and escalation tables and emits typed analytics for hit rate by conviction band, directional bias, leak by phase, routing correctness, and escalation correctness.
+
+D-4 has no prompts and no Senior touchpoints. The Senior remains involved only at the early gate, consolidated ratification, and final lean ratification documented above.
 
 ## Escalation Matrix
 
