@@ -12,6 +12,7 @@ FIXTURE_DIR = Path(__file__).parents[3] / "tests" / "fixtures"
 TICKER_FIXTURE_PATHS = {
     "AAPL": FIXTURE_DIR / "aapl_price.json",
     "MRNA": FIXTURE_DIR / "mrna_price.json",
+    "CRM": FIXTURE_DIR / "crm_price.json",
     "UBER": FIXTURE_DIR / "uber_price.json",
 }
 DEFAULT_FIXTURE_PRICES = {"AAPL": 200.0}

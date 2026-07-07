@@ -115,3 +115,76 @@ dcf:
 
         with pytest.raises(ValueError, match="placeholder"):
             load_config(path)
+
+
+def test_config_loads_saas_sector_scenarios_with_source_metadata() -> None:
+    config = load_config("config/conventions.yaml")
+    saas = config.dcf.sector_scenarios["saas"]
+
+    assert config.dcf_sector_for_ticker("CRM") == "saas"
+    assert config.dcf_sector_for_ticker("AAPL") is None
+    assert saas.source_name == "Aswath Damodaran, NYU Stern"
+    assert saas.source_date == "2026-01"
+    assert saas.industry_category == "Software (System & Application)"
+    assert saas.firm_count == 309
+    assert "mgnroc.html" in saas.source_urls["margins_and_roc"]
+    assert "histgr.html" in saas.source_urls["historical_growth"]
+    assert saas.scenarios["base"].revenue_growth == pytest.approx(0.123)
+    assert saas.scenarios["base"].nopat_margin == pytest.approx(0.326)
+    assert saas.scenarios["base"].sales_to_capital == pytest.approx(1.54)
+
+
+def test_config_rejects_active_sector_missing_sales_to_capital() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "bad-sector.yaml"
+        path.write_text(
+            """
+schema_version: "1.0"
+cost_of_capital:
+  erp: 0.0423
+  risk_free_fallback: 0.0418
+  credit_spread: 0.010
+  synthetic_rating: "AA"
+  wacc_band_bps: 0.005
+tax:
+  marginal_rate: 0.25
+invested_capital:
+  excess_cash_pct: 0.02
+betas:
+  Software (System & Application):
+    unlevered: 1.23
+    source_name: "Damodaran:Betas by Sector (US) - Software (System & Application)"
+    source_url: "https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/Betas.html"
+    source_date: "2026-01"
+    tickers: ["CRM"]
+dcf:
+  forecast_years: 5
+  terminal_growth: 0.025
+  reverse_growth_low: -0.05
+  reverse_growth_high: 0.32
+  scenarios:
+    bear: {revenue_growth: 0.02, nopat_margin: 0.24, sales_to_capital: 2.25}
+    base: {revenue_growth: 0.04, nopat_margin: 0.28, sales_to_capital: 2.75}
+    bull: {revenue_growth: 0.06, nopat_margin: 0.31, sales_to_capital: 3.25}
+  sector_scenarios:
+    saas:
+      status: "active"
+      source_name: "Aswath Damodaran, NYU Stern"
+      source_date: "2026-01"
+      industry_category: "Software (System & Application)"
+      firm_count: 309
+      source_urls:
+        margins_and_roc: "https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/mgnroc.html"
+        historical_growth: "https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/histgr.html"
+      tickers: ["CRM"]
+      rationale: "SaaS revenue, margin, and reinvestment economics differ materially from global DCF defaults."
+      scenarios:
+        bear: {revenue_growth: 0.06, nopat_margin: 0.22, sales_to_capital: 1.20}
+        base: {revenue_growth: 0.123, nopat_margin: 0.326}
+        bull: {revenue_growth: 0.20, nopat_margin: 0.38, sales_to_capital: 2.00}
+""",
+            encoding="utf-8",
+        )
+
+        with pytest.raises(ValueError, match="sales_to_capital"):
+            load_config(path)

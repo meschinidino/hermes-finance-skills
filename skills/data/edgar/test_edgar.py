@@ -56,6 +56,20 @@ def test_extracts_uber_service_platform_fixture_with_non_reported_inventory_mark
     assert "inventory_not_reported_by_issuer" in facts.flags
 
 
+def test_extracts_crm_saas_fixture_with_raw_usd_scale() -> None:
+    facts = fetch_edgar_facts("CRM")
+
+    assert resolve_cik("CRM") == "0001108524"
+    assert facts.cik == "0001108524"
+    assert facts.years == ["FY2021", "FY2022", "FY2023", "FY2024", "FY2025"]
+    assert facts.facts.revenue[-1].value == 41525
+    assert facts.facts.revenue[-1].provenance.accession == "0001108524-26-000060"
+    assert facts.facts.ebit[-1].value == 8331
+    assert facts.facts.ebit[-1].provenance.accession == "0001108524-26-000060"
+    assert facts.facts.shares_outstanding[-1].value == 923
+    assert "inventory_not_reported_by_issuer" in facts.flags
+
+
 def test_missing_required_concept_fails_closed(tmp_path: Path) -> None:
     fixture_dir = _copy_fixtures(tmp_path)
     facts_path = fixture_dir / "aapl_companyfacts.json"

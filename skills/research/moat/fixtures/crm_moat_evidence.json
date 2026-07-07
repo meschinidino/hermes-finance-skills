@@ -1,0 +1,44 @@
+{
+  "moat_mechanism": {
+    "draft": {
+      "claim": "Salesforce's potential moat is switching costs and platform breadth across customer data, workflow, automation, integration, analytics, and ecosystem partners.",
+      "mechanism_category": "switching_costs",
+      "support_categories": [
+        "switching_costs",
+        "scale_advantage",
+        "ecosystem",
+        "data_platform",
+        "enterprise_workflows",
+        "operating_scale"
+      ],
+      "mechanism_evidence": "Large enterprise customers can embed Salesforce products across customer-facing workflows, making renewal, integration, and multi-cloud expansion the forward-looking durability mechanisms."
+    },
+    "source_label": "Salesforce FY2026 Form 10-K product and platform discussion",
+    "excerpt_or_summary": "The filing describes a broad suite of enterprise cloud applications and platform services used across customer relationship workflows.",
+    "filing_reference": "CRM FY2026 Form 10-K, Item 1",
+    "period": "FY2025",
+    "tag": "us-gaap:BusinessDescription",
+    "form": "10-K",
+    "fixture_ref": "skills/research/moat/fixtures/crm_moat_evidence.json#moat_mechanism"
+  },
+  "historical_economics": {
+    "draft": "FY2025 operating income is positive and margins are high enough to support a cash-generator route, but durability depends on continued renewal, expansion, and disciplined reinvestment.",
+    "source_label": "CRM filed spine artifact",
+    "excerpt_or_summary": "The spine carries positive FY2025 revenue and operating income from EDGAR-derived facts.",
+    "filing_reference": "CRM FY2025 Form 10-K, EDGAR-derived spine inputs",
+    "period": "FY2025",
+    "tag": "computed:spread",
+    "form": "10-K",
+    "fixture_ref": "skills/research/moat/fixtures/crm_moat_evidence.json#historical_economics"
+  },
+  "durability_risk": {
+    "draft": "The durability risk is that cloud software competition, customer budget pressure, AI platform shifts, or acquisition complexity weakens renewals and expansion before the SaaS margin profile can compound.",
+    "source_label": "Salesforce FY2026 Form 10-K competition and technology risks",
+    "excerpt_or_summary": "Risk factors discuss competitive pressure, enterprise spending cycles, data security, technology change, AI, integration, and operating execution.",
+    "filing_reference": "CRM FY2026 Form 10-K, Item 1A",
+    "period": "FY2025",
+    "tag": "us-gaap:RiskFactors",
+    "form": "10-K",
+    "fixture_ref": "skills/research/moat/fixtures/crm_moat_evidence.json#durability_risk"
+  }
+}

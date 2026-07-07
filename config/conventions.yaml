@@ -28,6 +28,12 @@ betas:
     source_url: "https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/Betas.html"
     source_date: "2026-01"
     tickers: ["UBER"]
+  Software (System & Application):
+    unlevered: 1.23
+    source_name: "Damodaran:Betas by Sector (US) - Software (System & Application)"
+    source_url: "https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/Betas.html"
+    source_date: "2026-01"
+    tickers: ["CRM"]
 dcf:
   forecast_years: 5
   terminal_growth: 0.025
@@ -46,3 +52,28 @@ dcf:
       revenue_growth: 0.06
       nopat_margin: 0.31
       sales_to_capital: 3.25
+  sector_scenarios:
+    saas:
+      status: "active"
+      source_name: "Aswath Damodaran, NYU Stern"
+      source_date: "2026-01"
+      industry_category: "Software (System & Application)"
+      firm_count: 309
+      source_urls:
+        margins_and_roc: "https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/mgnroc.html"
+        historical_growth: "https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/histgr.html"
+      tickers: ["CRM"]
+      rationale: "SaaS revenue, margin, and reinvestment economics differ materially from global DCF defaults."
+      scenarios:
+        bear:
+          revenue_growth: 0.06
+          nopat_margin: 0.22
+          sales_to_capital: 1.20
+        base:
+          revenue_growth: 0.123
+          nopat_margin: 0.326
+          sales_to_capital: 1.54
+        bull:
+          revenue_growth: 0.20
+          nopat_margin: 0.38
+          sales_to_capital: 2.00

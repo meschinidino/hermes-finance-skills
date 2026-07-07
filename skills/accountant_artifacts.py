@@ -107,6 +107,7 @@ class MethodDirective(M1Model):
     header: Header
     ticker: str
     asset_class: Literal["cash-generator", "cyclical", "financial", "optionality", "asset-NAV"]
+    calibration_sector: str | None = None
     method: Literal["DCF", "normalized_mid_cycle", "financial_model", "rNPV", "SOTP", "NAV"]
     routing_reason: str
     indicators: list[MethodIndicator]

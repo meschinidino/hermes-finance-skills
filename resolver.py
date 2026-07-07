@@ -290,7 +290,7 @@ def analyze(
     route.record("B-6", produced_artifacts=[f"{run_dir}/method_directive.json"], audits=["audit_artifact"])
 
     if method_directive.method == "DCF":
-        valuation_range, expectations_line = build_dcf_artifacts(normalized, edgar, price, cost_of_capital, config)
+        valuation_range, expectations_line = build_dcf_artifacts(normalized, edgar, price, cost_of_capital, config, method_directive=method_directive)
         audit_artifact(valuation_range, storage=active_storage, path=f"{run_dir}/valuation_range.json")
         audit_artifact(expectations_line, storage=active_storage, path=f"{run_dir}/expectations_line.json")
         route.record("B-3", produced_artifacts=[f"{run_dir}/valuation_range.json", f"{run_dir}/expectations_line.json"], audits=["audit_artifact"])

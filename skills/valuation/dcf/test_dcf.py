@@ -9,6 +9,7 @@ from skills.data.edgar.edgar import fetch_edgar_facts
 from skills.data.price.price import fetch_price
 from skills.serialization import artifact_model_to_payload
 from skills.valuation.dcf.dcf import build_dcf_artifacts, build_reverse_expectations
+from skills.valuation.method_router.method_router import route_method
 from skills.valuation.normalize.normalize import normalize_financials
 
 
@@ -21,6 +22,16 @@ def _fixture_path():
     return config, edgar, price, coc, normalized
 
 
+def _crm_fixture_path():
+    config = load_config("config/conventions.yaml")
+    edgar = fetch_edgar_facts("CRM")
+    price = fetch_price("CRM", edgar=edgar)
+    coc = build_cost_of_capital_inputs("CRM", config, edgar=edgar, price=price)
+    normalized = normalize_financials(edgar)
+    directive = route_method(normalized, edgar, config)
+    return config, edgar, price, coc, normalized, directive
+
+
 def test_forward_dcf_emits_three_schema_valid_scenarios() -> None:
     config, edgar, price, coc, normalized = _fixture_path()
     valuation, expectations = build_dcf_artifacts(normalized, edgar, price, coc, config)
@@ -31,6 +42,9 @@ def test_forward_dcf_emits_three_schema_valid_scenarios() -> None:
     assert all(scenario.value.derivation for scenario in valuation.scenarios)
     assert all(scenario.probability.decision is None for scenario in valuation.scenarios)
     assert expectations.frame == "DCF"
+    base_assumptions = {assumption.driver: assumption for assumption in valuation.scenarios[1].assumptions}
+    assert "config.dcf.scenarios.base.revenue_growth" in base_assumptions["revenue_growth"].value.derivation
+    assert "config.dcf.scenarios.scenarios" not in base_assumptions["revenue_growth"].value.derivation
     audit_artifact(valuation)
 
 
@@ -106,6 +120,41 @@ def test_dcf_artifacts_serialize_without_losing_provenance() -> None:
 
     assert valuation_payload["scenarios"][1]["value"]["provenance"]["tag"] == "computed:dcf_value_per_share"
     assert expectations_payload["wacc_band"]["low"]["provenance"]["tag"] == "computed:wacc_low"
+
+
+def test_crm_dcf_uses_saas_sector_assumptions_and_differs_from_global_default() -> None:
+    config, edgar, price, coc, normalized, directive = _crm_fixture_path()
+
+    global_valuation, global_expectations = build_dcf_artifacts(normalized, edgar, price, coc, config)
+    sector_valuation, sector_expectations = build_dcf_artifacts(normalized, edgar, price, coc, config, method_directive=directive)
+
+    assert directive.calibration_sector == "saas"
+    assert "dcf_assumption_source:global" in global_valuation.flags
+    assert "dcf_assumption_source:sector:saas" in sector_valuation.flags
+    assert "dcf_assumption_source:sector:saas" in sector_expectations.flags
+
+    base_assumptions = {assumption.driver: assumption for assumption in sector_valuation.scenarios[1].assumptions}
+    assert base_assumptions["revenue_growth"].value.value == pytest.approx(0.123)
+    assert base_assumptions["nopat_margin"].value.value == pytest.approx(0.326)
+    assert base_assumptions["sales_to_capital"].value.value == pytest.approx(1.54)
+    for driver in ("revenue_growth", "nopat_margin", "sales_to_capital"):
+        assumption = base_assumptions[driver]
+        assert "Aswath Damodaran, NYU Stern" in assumption.base_rate_check
+        assert "Software (System & Application)" in assumption.base_rate_check
+        assert "January 2026" in assumption.base_rate_check
+        assert "config.dcf.sector_scenarios.saas" in assumption.base_rate_check
+        assert "config.dcf.sector_scenarios.saas.scenarios.base" in assumption.value.derivation
+
+    global_values = [scenario.value.value for scenario in global_valuation.scenarios]
+    sector_values = [scenario.value.value for scenario in sector_valuation.scenarios]
+    assert sector_values != global_values
+    assert sector_expectations.implied["margin"].value == pytest.approx(0.326)
+    assert "config.dcf.sector_scenarios.saas.scenarios.base.nopat_margin" in sector_expectations.implied["margin"].derivation
+
+    audit_artifact(global_valuation)
+    audit_artifact(global_expectations)
+    audit_artifact(sector_valuation)
+    audit_artifact(sector_expectations)
 
 
 def test_audit_rejects_missing_dcf_derivation() -> None:

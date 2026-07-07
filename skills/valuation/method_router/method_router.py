@@ -31,10 +31,14 @@ def route_method(
         MethodIndicator(name="latest_revenue_growth", value=revenue_growth, source="computed"),
     ]
     asset_class, method, reason = _classify(classification, revenue, ebit, ebit_margin)
+    calibration_sector = config.dcf_sector_for_ticker(financials.ticker)
+    if calibration_sector:
+        indicators.append(MethodIndicator(name="calibration_sector", value=calibration_sector, source="config.dcf.sector_scenarios"))
     return MethodDirective(
         header=Header(schema_version=schema_version or config.schema_version, produced_by="B-6", produced_at=produced),
         ticker=financials.ticker,
         asset_class=asset_class,
+        calibration_sector=calibration_sector,
         method=method,
         routing_reason=reason,
         indicators=indicators,

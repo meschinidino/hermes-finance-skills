@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import yaml
-from pydantic import BaseModel, ConfigDict, ValidationError, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
 
 class StrictConfigModel(BaseModel):
@@ -84,12 +84,48 @@ class DcfScenarioConfig(StrictConfigModel):
         return value
 
 
+class DcfSectorScenarioConfig(StrictConfigModel):
+    status: Literal["active"]
+    source_name: str
+    source_date: str
+    industry_category: str
+    firm_count: int
+    source_urls: dict[str, str]
+    tickers: list[str]
+    rationale: str
+    scenarios: dict[str, DcfScenarioConfig]
+
+    @field_validator("firm_count")
+    @classmethod
+    def positive_firm_count(cls, value: int) -> int:
+        if value <= 0:
+            raise ValueError("firm_count must be positive")
+        return value
+
+    @model_validator(mode="after")
+    def validate_sector(self) -> DcfSectorScenarioConfig:
+        if not self.source_name.strip() or not self.source_date.strip():
+            raise ValueError("active sector scenario requires source metadata")
+        if not self.industry_category.strip():
+            raise ValueError("active sector scenario requires industry category")
+        if not self.source_urls or any(not key.strip() or not value.strip() for key, value in self.source_urls.items()):
+            raise ValueError("active sector scenario requires source URLs")
+        if not self.tickers:
+            raise ValueError("active sector scenario requires covered tickers")
+        if not self.rationale.strip():
+            raise ValueError("active sector scenario requires rationale")
+        if set(self.scenarios) != {"bear", "base", "bull"}:
+            raise ValueError("sector dcf scenarios must be bear/base/bull")
+        return self
+
+
 class DcfConfig(StrictConfigModel):
     forecast_years: int
     terminal_growth: float
     reverse_growth_low: float
     reverse_growth_high: float
     scenarios: dict[str, DcfScenarioConfig]
+    sector_scenarios: dict[str, DcfSectorScenarioConfig] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def validate_dcf(self) -> DcfConfig:
@@ -116,6 +152,13 @@ class Config(StrictConfigModel):
             raise ValueError("at least one beta is required")
         if "AAPL" in {ticker.upper() for ticker in self.betas}:
             raise ValueError("AAPL ticker beta placeholder is not allowed; use source-backed sector beta")
+        seen_sector_tickers: dict[str, str] = {}
+        for sector, sector_config in self.dcf.sector_scenarios.items():
+            for ticker in sector_config.tickers:
+                normalized = ticker.upper().strip()
+                if normalized in seen_sector_tickers:
+                    raise ValueError(f"duplicate_dcf_sector_assignment:{normalized}")
+                seen_sector_tickers[normalized] = sector
         normalized = {sector: beta for sector, beta in self.betas.items()}
         object.__setattr__(self, "betas", normalized)
         return self
@@ -126,6 +169,17 @@ class Config(StrictConfigModel):
             if normalized in {covered.upper() for covered in beta.tickers}:
                 return beta
         raise ValueError(f"missing_beta:{normalized}")
+
+    def dcf_sector_for_ticker(self, ticker: str) -> str | None:
+        normalized = ticker.upper().strip()
+        matched = [
+            sector
+            for sector, sector_config in self.dcf.sector_scenarios.items()
+            if normalized in {covered.upper() for covered in sector_config.tickers}
+        ]
+        if len(matched) > 1:
+            raise ValueError(f"duplicate_dcf_sector_assignment:{normalized}")
+        return matched[0] if matched else None
 
 
 def load_config(path: Path | str) -> Config:

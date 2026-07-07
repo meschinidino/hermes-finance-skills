@@ -1,0 +1,32 @@
+{
+  "reinvestment_behavior": {
+    "draft": "Salesforce is reinvesting in product development, data and AI capabilities, go-to-market capacity, and platform integration while operating as a profitable SaaS cash generator; the Senior should judge whether reinvestment strengthens retention and expansion rather than diluting margin discipline.",
+    "source_label": "CRM FY2025 Form 10-K operating expense and strategy discussion",
+    "excerpt_or_summary": "The fixture links SaaS reinvestment and operating leverage to filed revenue, cost, and operating income facts.",
+    "filing_reference": "CRM FY2025 Form 10-K, MD&A and EDGAR-derived spine inputs",
+    "period": "FY2025",
+    "tag": "us-gaap:OperatingIncomeLoss",
+    "form": "10-K",
+    "fixture_ref": "skills/research/capalloc/fixtures/crm_capalloc_evidence.json#reinvestment_behavior"
+  },
+  "shareholder_return_behavior": {
+    "draft": "Shareholder returns should be judged against buyback discipline, dilution, stock-based compensation, and acquisition use of capital because SaaS per-share value can be diluted if growth investments do not compound.",
+    "source_label": "CRM FY2025 Form 10-K equity and liquidity discussion",
+    "excerpt_or_summary": "The EDGAR share-count facts and equity disclosures provide the share-base context for per-share value and capital return discipline.",
+    "filing_reference": "CRM FY2025 Form 10-K, liquidity and stockholders' equity disclosures",
+    "period": "FY2025",
+    "tag": "dei:EntityCommonStockSharesOutstanding",
+    "form": "10-K",
+    "fixture_ref": "skills/research/capalloc/fixtures/crm_capalloc_evidence.json#shareholder_return_behavior"
+  },
+  "balance_sheet_discipline": {
+    "draft": "Balance-sheet discipline hinges on preserving flexibility for cloud software competition, acquisition integration, data security incidents, and AI product investment while maintaining the SaaS cash-generator route.",
+    "source_label": "CRM FY2025 EDGAR-derived cash, liabilities, and debt facts",
+    "excerpt_or_summary": "EDGAR-derived cash, debt, and liability concepts frame financial flexibility and WACC inputs.",
+    "filing_reference": "CRM FY2025 Form 10-K, balance sheet",
+    "period": "FY2025",
+    "tag": "us-gaap:CashAndCashEquivalentsAtCarryingValue",
+    "form": "10-K",
+    "fixture_ref": "skills/research/capalloc/fixtures/crm_capalloc_evidence.json#balance_sheet_discipline"
+  }
+}

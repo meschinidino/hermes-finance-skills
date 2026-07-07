@@ -5,12 +5,13 @@ from datetime import datetime, timezone
 from typing import Literal
 
 from skills._primitives import Header, Number, Provenance, Ratifiable
-from skills.config import Config
+from skills.config import Config, DcfScenarioConfig, DcfSectorScenarioConfig
 from skills.accountant_artifacts import (
     CostOfCapitalInputs,
     DcfAssumption,
     EdgarFacts,
     ExpectationsLine,
+    MethodDirective,
     NormalizedFinancials,
     PriceResult,
     ReverseBandResult,
@@ -33,18 +34,41 @@ class DcfDrivers:
     shares: Number
 
 
+@dataclass(frozen=True)
+class DcfScenarioSource:
+    kind: Literal["global", "sector"]
+    sector_key: str | None
+    config_path: str
+    scenarios: dict[str, DcfScenarioConfig]
+    base_rate_check: str
+    source_derivation: str
+
+
 def build_dcf_artifacts(
     financials: NormalizedFinancials,
     edgar: EdgarFacts,
     price: PriceResult,
     cost_of_capital: CostOfCapitalInputs,
     config: Config,
+    method_directive: MethodDirective | None = None,
 ) -> tuple[ValuationRange, ExpectationsLine]:
     produced_at = datetime.now(timezone.utc)
     _require_m2a_inputs(price, cost_of_capital)
-    valuation_range = build_forward_valuation(financials, edgar, price, cost_of_capital, config, produced_at)
-    expectations_line = build_reverse_expectations(financials, edgar, price, cost_of_capital, config, produced_at)
+    source = resolve_dcf_scenario_source(config, method_directive=method_directive)
+    valuation_range = build_forward_valuation(financials, edgar, price, cost_of_capital, config, produced_at, scenario_source=source)
+    expectations_line = build_reverse_expectations(financials, edgar, price, cost_of_capital, config, produced_at, scenario_source=source)
     return valuation_range, expectations_line
+
+
+def resolve_dcf_scenario_source(config: Config, *, method_directive: MethodDirective | None = None, calibration_sector: str | None = None) -> DcfScenarioSource:
+    sector_key = calibration_sector or (method_directive.calibration_sector if method_directive else None)
+    if sector_key is None:
+        return _global_scenario_source(config)
+    try:
+        sector_config = config.dcf.sector_scenarios[sector_key]
+    except KeyError:
+        return _global_scenario_source(config)
+    return _sector_scenario_source(sector_key, sector_config)
 
 
 def build_forward_valuation(
@@ -54,19 +78,22 @@ def build_forward_valuation(
     cost_of_capital: CostOfCapitalInputs,
     config: Config,
     produced_at: datetime | None = None,
+    method_directive: MethodDirective | None = None,
+    scenario_source: DcfScenarioSource | None = None,
 ) -> ValuationRange:
     produced = produced_at or datetime.now(timezone.utc)
+    source = scenario_source or resolve_dcf_scenario_source(config, method_directive=method_directive)
     scenarios: list[Scenario] = []
     normalized_fixture_check = f"EDGAR fact from normalized {financials.ticker} fixture path."
     for name in ("bear", "base", "bull"):
-        scenario_config = config.dcf.scenarios[name]
+        scenario_config = source.scenarios[name]
         wacc = {
             "bear": cost_of_capital.wacc_high,
             "base": cost_of_capital.wacc,
             "bull": cost_of_capital.wacc_low,
         }[name]
         assert wacc is not None
-        drivers = _drivers(financials, edgar, config, scenario_config, wacc, produced)
+        drivers = _drivers(financials, edgar, config, scenario_config, wacc, produced, source=source, scenario=name)
         per_share = _value_per_share(drivers)
         value_derivation = _forward_value_derivation(drivers)
         scenarios.append(
@@ -78,9 +105,9 @@ def build_forward_valuation(
                     DcfAssumption(driver="terminal_growth", value=drivers.terminal_growth, base_rate_check="M2a deterministic default only; terminal economics review is later scope."),
                     DcfAssumption(driver="net_debt", value=drivers.net_debt, base_rate_check="EDGAR-derived mechanical input."),
                     DcfAssumption(driver="diluted_shares", value=drivers.shares, base_rate_check=normalized_fixture_check),
-                    DcfAssumption(driver="revenue_growth", value=drivers.revenue_growth, base_rate_check="M2a deterministic default only; base-rate checks are M2b scope."),
-                    DcfAssumption(driver="nopat_margin", value=drivers.nopat_margin, base_rate_check="M2a deterministic default only; base-rate checks are M2b scope."),
-                    DcfAssumption(driver="sales_to_capital", value=drivers.sales_to_capital, base_rate_check="M2a deterministic default only; base-rate checks are M2b scope."),
+                    DcfAssumption(driver="revenue_growth", value=drivers.revenue_growth, base_rate_check=source.base_rate_check),
+                    DcfAssumption(driver="nopat_margin", value=drivers.nopat_margin, base_rate_check=source.base_rate_check),
+                    DcfAssumption(driver="sales_to_capital", value=drivers.sales_to_capital, base_rate_check=source.base_rate_check),
                     DcfAssumption(driver="wacc", value=drivers.wacc, base_rate_check="A-3 cost-of-capital band input."),
                 ],
                 value=_computed(
@@ -120,7 +147,7 @@ def build_forward_valuation(
                 ),
             )
         ],
-        flags=sorted(set(price.flags + cost_of_capital.flags + ["m2a_standalone_not_senior_ratified"])),
+        flags=sorted(set(price.flags + cost_of_capital.flags + ["m2a_standalone_not_senior_ratified", _source_flag(source)])),
     )
 
 
@@ -131,19 +158,22 @@ def build_reverse_expectations(
     cost_of_capital: CostOfCapitalInputs,
     config: Config,
     produced_at: datetime | None = None,
+    method_directive: MethodDirective | None = None,
+    scenario_source: DcfScenarioSource | None = None,
 ) -> ExpectationsLine:
     produced = produced_at or datetime.now(timezone.utc)
     assert cost_of_capital.wacc_low is not None
     assert cost_of_capital.wacc_high is not None
-    base = config.dcf.scenarios["base"]
-    flags = sorted(set(price.flags + cost_of_capital.flags))
+    source = scenario_source or resolve_dcf_scenario_source(config, method_directive=method_directive)
+    base = source.scenarios["base"]
+    flags = sorted(set(price.flags + cost_of_capital.flags + [_source_flag(source)]))
     if price.price is None:
         low = _blocked_reverse_result(cost_of_capital.wacc_low, "observed price unavailable; reverse DCF requires market price", produced)
         high = _blocked_reverse_result(cost_of_capital.wacc_high, "observed price unavailable; reverse DCF requires market price", produced)
         flags.append("reverse_dcf_blocked_no_observed_price")
     else:
-        low = _solve_growth_at_wacc(financials, edgar, config, price.price, base.nopat_margin, base.sales_to_capital, cost_of_capital.wacc_low, produced)
-        high = _solve_growth_at_wacc(financials, edgar, config, price.price, base.nopat_margin, base.sales_to_capital, cost_of_capital.wacc_high, produced)
+        low = _solve_growth_at_wacc(financials, edgar, config, price.price, base.nopat_margin, base.sales_to_capital, cost_of_capital.wacc_low, produced, source)
+        high = _solve_growth_at_wacc(financials, edgar, config, price.price, base.nopat_margin, base.sales_to_capital, cost_of_capital.wacc_high, produced, source)
     implied_growth: Number | None = None
     if low.converged and high.converged and low.implied_revenue_growth is not None and high.implied_revenue_growth is not None:
         implied_growth = _computed(
@@ -157,7 +187,8 @@ def build_reverse_expectations(
     else:
         flags.append("reverse_dcf_non_convergence")
 
-    margin = _assumption_number(base.nopat_margin, "computed:reverse_dcf_margin_assumption", financials.years[-1], "ratio", produced, "Reverse DCF holds config base NOPAT margin constant while solving revenue growth; inputs: config.dcf.scenarios.base.nopat_margin")
+    base_scenario_path = _scenario_path(source, "base")
+    margin = _assumption_number(base.nopat_margin, "computed:reverse_dcf_margin_assumption", financials.years[-1], "ratio", produced, f"Reverse DCF holds selected base NOPAT margin constant while solving revenue growth; inputs: {base_scenario_path}.nopat_margin; {source.source_derivation}")
     duration = _assumption_number(float(config.dcf.forecast_years), "computed:reverse_dcf_duration_assumption", financials.years[-1], "years", produced, "Reverse DCF uses configured explicit forecast duration; inputs: config.dcf.forecast_years")
     terminal = _assumption_number(config.dcf.terminal_growth, "computed:reverse_dcf_terminal_growth_assumption", financials.years[-1], "percent", produced, "Reverse DCF uses configured terminal growth as terminal economics proxy for M2a; inputs: config.dcf.terminal_growth")
 
@@ -189,11 +220,12 @@ def _solve_growth_at_wacc(
     sales_to_capital: float,
     wacc: Number,
     produced_at: datetime,
+    source: DcfScenarioSource,
 ) -> ReverseBandResult:
     low = config.dcf.reverse_growth_low
     high = config.dcf.reverse_growth_high
-    low_drivers = _drivers_from_values(financials, edgar, config, low, margin, sales_to_capital, wacc, produced_at)
-    high_drivers = _drivers_from_values(financials, edgar, config, high, margin, sales_to_capital, wacc, produced_at)
+    low_drivers = _drivers_from_values(financials, edgar, config, low, margin, sales_to_capital, wacc, produced_at, source=source, scenario="base")
+    high_drivers = _drivers_from_values(financials, edgar, config, high, margin, sales_to_capital, wacc, produced_at, source=source, scenario="base")
     low_value = _value_per_share(low_drivers)
     high_value = _value_per_share(high_drivers)
     if not min(low_value, high_value) <= target_price.value <= max(low_value, high_value):
@@ -210,7 +242,7 @@ def _solve_growth_at_wacc(
     mid = lo
     for _ in range(80):
         mid = (lo + hi) / 2
-        mid_value = _value_per_share(_drivers_from_values(financials, edgar, config, mid, margin, sales_to_capital, wacc, produced_at))
+        mid_value = _value_per_share(_drivers_from_values(financials, edgar, config, mid, margin, sales_to_capital, wacc, produced_at, source=source, scenario="base"))
         if abs(mid_value - target_price.value) < 0.0001:
             break
         if (low_value <= target_price.value <= mid_value) or (mid_value <= target_price.value <= low_value):
@@ -229,12 +261,12 @@ def _solve_growth_at_wacc(
             financials.years[-1],
             "percent",
             produced_at,
-            f"Bisection solve for revenue growth where DCF per-share value equals observed market price at this WACC band edge; inputs: {target_price.provenance.tag}, {wacc.provenance.tag}, EDGAR revenue, EDGAR shares, computed:net_debt, config.dcf.scenarios.base.nopat_margin, config.dcf.scenarios.base.sales_to_capital, config.dcf.forecast_years, config.dcf.terminal_growth",
+            f"Bisection solve for revenue growth where DCF per-share value equals observed market price at this WACC band edge; inputs: {target_price.provenance.tag}, {wacc.provenance.tag}, EDGAR revenue, EDGAR shares, computed:net_debt, {_scenario_path(source, 'base')}.nopat_margin, {_scenario_path(source, 'base')}.sales_to_capital, config.dcf.forecast_years, config.dcf.terminal_growth; {source.source_derivation}",
         ),
     )
 
 
-def _drivers(financials, edgar, config, scenario_config, wacc: Number, produced_at: datetime) -> DcfDrivers:
+def _drivers(financials, edgar, config, scenario_config, wacc: Number, produced_at: datetime, *, source: DcfScenarioSource, scenario: str) -> DcfDrivers:
     return _drivers_from_values(
         financials,
         edgar,
@@ -244,21 +276,66 @@ def _drivers(financials, edgar, config, scenario_config, wacc: Number, produced_
         scenario_config.sales_to_capital,
         wacc,
         produced_at,
+        source=source,
+        scenario=scenario,
     )
 
 
-def _drivers_from_values(financials: NormalizedFinancials, edgar: EdgarFacts, config: Config, growth: float, margin: float, sales_to_capital: float, wacc: Number, produced_at: datetime) -> DcfDrivers:
+def _drivers_from_values(financials: NormalizedFinancials, edgar: EdgarFacts, config: Config, growth: float, margin: float, sales_to_capital: float, wacc: Number, produced_at: datetime, *, source: DcfScenarioSource, scenario: str) -> DcfDrivers:
+    scenario_path = _scenario_path(source, scenario)
     return DcfDrivers(
         revenue=financials.facts.revenue[-1],
-        revenue_growth=_assumption_number(growth, "computed:dcf_assumption:revenue_growth", "M2a", "percent", produced_at, "Config-backed M2a default; Analyst scenarios are out of scope; inputs: config.dcf.scenarios.revenue_growth"),
-        nopat_margin=_assumption_number(margin, "computed:dcf_assumption:nopat_margin", "M2a", "ratio", produced_at, "Config-backed M2a default from AAPL fixture economics; inputs: config.dcf.scenarios.nopat_margin"),
-        sales_to_capital=_assumption_number(sales_to_capital, "computed:dcf_assumption:sales_to_capital", "M2a", "x", produced_at, "Config-backed M2a reinvestment driver; inputs: config.dcf.scenarios.sales_to_capital"),
+        revenue_growth=_assumption_number(growth, "computed:dcf_assumption:revenue_growth", "M2a", "percent", produced_at, f"Selected DCF revenue growth assumption; inputs: {scenario_path}.revenue_growth; {source.source_derivation}"),
+        nopat_margin=_assumption_number(margin, "computed:dcf_assumption:nopat_margin", "M2a", "ratio", produced_at, f"Selected DCF NOPAT margin assumption; inputs: {scenario_path}.nopat_margin; {source.source_derivation}"),
+        sales_to_capital=_assumption_number(sales_to_capital, "computed:dcf_assumption:sales_to_capital", "M2a", "x", produced_at, f"Selected DCF sales-to-capital assumption; inputs: {scenario_path}.sales_to_capital; {source.source_derivation}"),
         forecast_years=_assumption_number(float(config.dcf.forecast_years), "computed:dcf_assumption:forecast_years", "M2a", "years", produced_at, "Configured explicit DCF duration; inputs: config.dcf.forecast_years"),
         terminal_growth=_assumption_number(config.dcf.terminal_growth, "computed:dcf_assumption:terminal_growth", "M2a", "percent", produced_at, "Configured DCF terminal growth; inputs: config.dcf.terminal_growth"),
         wacc=wacc,
         net_debt=_net_debt(edgar, produced_at),
         shares=edgar.facts.shares_outstanding[-1],
     )
+
+
+def _scenario_path(source: DcfScenarioSource, scenario: str) -> str:
+    if source.kind == "sector":
+        return f"{source.config_path}.scenarios.{scenario}"
+    return f"{source.config_path}.{scenario}"
+
+
+def _global_scenario_source(config: Config) -> DcfScenarioSource:
+    return DcfScenarioSource(
+        kind="global",
+        sector_key=None,
+        config_path="config.dcf.scenarios",
+        scenarios=config.dcf.scenarios,
+        base_rate_check="M2a deterministic default only; base-rate checks are M2b scope.",
+        source_derivation="global config-backed M2a default; Analyst scenarios are out of scope; inputs: config.dcf.scenarios",
+    )
+
+
+def _sector_scenario_source(sector_key: str, sector_config: DcfSectorScenarioConfig) -> DcfScenarioSource:
+    label = (
+        "SaaS sector base rate - Aswath Damodaran, NYU Stern, Software (System & Application) "
+        "industry averages, data as of January 2026 - see config.dcf.sector_scenarios.saas"
+    )
+    source_urls = ", ".join(f"{key}={value}" for key, value in sorted(sector_config.source_urls.items()))
+    return DcfScenarioSource(
+        kind="sector",
+        sector_key=sector_key,
+        config_path=f"config.dcf.sector_scenarios.{sector_key}",
+        scenarios=sector_config.scenarios,
+        base_rate_check=label,
+        source_derivation=(
+            f"sector source: {sector_config.source_name}, {sector_config.industry_category}, "
+            f"{sector_config.firm_count} firms, data as of {sector_config.source_date}; source_urls: {source_urls}"
+        ),
+    )
+
+
+def _source_flag(source: DcfScenarioSource) -> str:
+    if source.kind == "sector":
+        return f"dcf_assumption_source:sector:{source.sector_key}"
+    return "dcf_assumption_source:global"
 
 
 def _value_per_share(drivers: DcfDrivers) -> float:

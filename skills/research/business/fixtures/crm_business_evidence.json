@@ -1,0 +1,26 @@
+{
+  "business_model_summary": {
+    "draft": "Salesforce is a cloud software company that sells subscription and support, professional services, and related enterprise applications across sales, service, marketing, commerce, data, integration, and analytics workflows.",
+    "source_label": "Salesforce FY2026 Form 10-K business description",
+    "excerpt_or_summary": "The business description identifies Salesforce as an enterprise cloud software provider with subscription-heavy customer relationship management and related platform offerings.",
+    "filing_reference": "CRM FY2026 Form 10-K, Item 1"
+  },
+  "revenue_driver_summary": {
+    "draft": "Revenue is driven by subscription seats, cloud adoption, customer retention, multi-cloud expansion, data and AI attach, professional services, and pricing discipline; the underwriting question is whether durable growth can coexist with high SaaS margins.",
+    "source_label": "Salesforce FY2026 Form 10-K revenue and MD&A discussion",
+    "excerpt_or_summary": "The filing links revenue to subscription and support contracts, renewals, new business, product adoption, and services activity.",
+    "filing_reference": "CRM FY2026 Form 10-K, Item 7"
+  },
+  "customer_end_market_summary": {
+    "draft": "End markets are enterprises and organizations using cloud software to manage customer data, sales automation, customer service, marketing, commerce, analytics, integration, and workflow automation.",
+    "source_label": "Salesforce FY2026 Form 10-K products and customer discussion",
+    "excerpt_or_summary": "The filing describes customers across industries using Salesforce cloud applications and platform services.",
+    "filing_reference": "CRM FY2026 Form 10-K, Item 1"
+  },
+  "business_understanding_risk": {
+    "draft": "The early gate should focus on whether a Senior is comfortable underwriting SaaS renewal durability, platform competition, AI monetization, acquisition integration, and stock-based compensation while treating non-reported inventory as expected for a cloud software issuer.",
+    "source_label": "Salesforce FY2026 Form 10-K risk factors",
+    "excerpt_or_summary": "Risk factors emphasize competition, renewal and expansion risk, enterprise IT spending, data security, AI and technology shifts, acquisition integration, and personnel costs.",
+    "filing_reference": "CRM FY2026 Form 10-K, Item 1A"
+  }
+}

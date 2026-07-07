@@ -45,7 +45,21 @@ def test_automation_software_does_not_match_automotive_auto_token() -> None:
     directive = route_method(normalized, edgar, config, industry_classification="automation software")
 
     assert directive.asset_class == "cash-generator"
+    assert directive.calibration_sector is None
     assert directive.method == "DCF"
+    audit_artifact(directive)
+
+
+def test_crm_sets_saas_calibration_sector_without_changing_asset_class() -> None:
+    config = load_config("config/conventions.yaml")
+    edgar = fetch_edgar_facts("CRM")
+    normalized = normalize_financials(edgar)
+    directive = route_method(normalized, edgar, config)
+
+    assert directive.asset_class == "cash-generator"
+    assert directive.calibration_sector == "saas"
+    assert directive.method == "DCF"
+    assert any(indicator.name == "calibration_sector" and indicator.value == "saas" for indicator in directive.indicators)
     audit_artifact(directive)
 
 
