@@ -1,0 +1,25 @@
+{
+  "source_name": "Aswath Damodaran, NYU Stern",
+  "source_date": "2026-01",
+  "source_urls": {
+    "margins_and_roc": "https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/mgnroc.html",
+    "historical_growth": "https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/histgr.html"
+  },
+  "base_value_decimals": 3,
+  "captured_by": "M4.5 Phase 2 sector provisioning; extracted from the NYU Stern data pages, data as of January 2026.",
+  "industries": {
+    "Software (System & Application)": {
+      "firm_count": 309,
+      "revenue_growth_next_5y": 0.1233,
+      "after_tax_operating_margin": 0.3262,
+      "sales_to_invested_capital": 1.54
+    },
+    "Software (Internet)": {
+      "firm_count": 29,
+      "revenue_growth_next_5y": 0.1771,
+      "after_tax_operating_margin": 0.0459,
+      "sales_to_invested_capital": 1.35,
+      "note": "Captured for provenance only; not activated as a sector in Phase 2. Thin sample (29 firms) and a 4.59% after-tax operating margin make it a poor DCF base-rate anchor."
+    }
+  }
+}

@@ -1,0 +1,33 @@
+# House judgment layer for DCF sector base rates.
+#
+# This file holds the inputs that do NOT come from Damodaran and do NOT go stale
+# when the annual dataset refreshes: the bear/bull brackets around each base
+# value, the tickers manually tagged into each sector, and the rationale text.
+#
+# The Damodaran-sourced, staleable numbers (base values + firm counts + source
+# URLs + source date) live in config/sources/<snapshot>.json instead. The
+# provisioning tool (skills/provisioning/sector_provisioning.py) assembles a
+# snapshot + this file into the config.dcf.sector_scenarios.<sector> blocks in
+# conventions.yaml, so refreshing the base rates means dropping in a new snapshot
+# and re-running the tool, not hand-editing decimals.
+#
+# base value  = round(Damodaran value from snapshot, snapshot.base_value_decimals)
+# bear / bull = the absolute house-judgment values below
+
+snapshot: "damodaran-2026-01"
+
+sectors:
+  saas:
+    industry_category: "Software (System & Application)"
+    tickers: ["CRM"]
+    rationale: "SaaS revenue, margin, and reinvestment economics differ materially from global DCF defaults."
+    brackets:
+      revenue_growth:
+        bear: 0.06
+        bull: 0.20
+      nopat_margin:
+        bear: 0.22
+        bull: 0.38
+      sales_to_capital:
+        bear: 1.20
+        bull: 2.00
