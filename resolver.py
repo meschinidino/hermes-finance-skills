@@ -1266,6 +1266,14 @@ def _run_report_render_command(argv: list[str]) -> None:
     print(json.dumps(result.model_dump(mode="json"), indent=2, sort_keys=True))
 
 
+def _run_provision_sectors_command(argv: list[str]) -> None:
+    from skills.provisioning.sector_provisioning import main as provision_main
+
+    code = provision_main(argv)
+    if code:
+        raise SystemExit(code)
+
+
 def main(argv: list[str] | None = None) -> None:
     raw_args = list(sys.argv[1:] if argv is None else argv)
     if raw_args and raw_args[0] == "calibration-review":
@@ -1276,6 +1284,9 @@ def main(argv: list[str] | None = None) -> None:
         return
     if raw_args and raw_args[0] == "render-report":
         _run_report_render_command(raw_args[1:])
+        return
+    if raw_args and raw_args[0] == "provision-sectors":
+        _run_provision_sectors_command(raw_args[1:])
         return
 
     parser = argparse.ArgumentParser(description="Run the finance skill pack resolver.")
