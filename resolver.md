@@ -15,8 +15,8 @@ M4c makes the resolver path explicit and auditable. The resolver remains the onl
 | C-1 Business | Analyst | EDGAR facts, filed run dir | `business.json` | `audit_analyst_artifact` | audit failure | none | resolver |
 | Business Early Gate | Senior | `business.json` | `business_early_gate.json` | identity independence before call | `business_no_go` KillMemo | early gate | Senior |
 | B-4 Screens | Accountant | EDGAR facts, price, industry | `gate_card.json` | `audit_artifact` | `gate_kill` KillMemo if verdict is KILL | none | Senior for verdict later |
-| B-6 Method Router | Accountant | normalized financials, EDGAR, config | `method_directive.json` | `audit_artifact` | unsupported route rejects or defers | none | resolver |
-| B-3 DCF | Accountant | DCF-routed method, normalized, price, CoC | `valuation_range.json`, `expectations_line.json` | `audit_artifact` | audit failure | none | resolver |
+| B-6 Method Router | Accountant | normalized financials, EDGAR, config | `method_directive.json` with method, asset class, and optional `calibration_sector` | `audit_artifact` | unsupported route rejects or defers | none | resolver |
+| B-3 DCF | Accountant | DCF-routed method directive, normalized, price, CoC | `valuation_range.json`, `expectations_line.json` | `audit_artifact` | audit failure | none | resolver |
 | B-5 Base-Rate | Accountant | DCF scenario revenue-growth drivers | `base_rate_*_revenue_growth.json` | `audit_artifact` | route audit failure if missing on DCF route | none | resolver |
 | C-4 Scenarios | Analyst | method directive, valuation artifacts or route deferral, B-5 anchors on DCF | `scenarios.json` | `audit_scenario_set` | audit failure | none | Senior ratifies probabilities later |
 | C-5 Edge/Cruxes | Analyst | filed C-1/C-4, gate, route, spine | `edge_cruxes.json` | `audit_edge_cruxes` | audit failure | none | Senior ratifies later |
@@ -29,7 +29,9 @@ M4c makes the resolver path explicit and auditable. The resolver remains the onl
 
 ## Route Behavior
 
-AAPL follows the DCF route: B-6 selects `DCF`, B-3 files valuation artifacts, B-5 files one base-rate anchor per DCF revenue-growth scenario, and C-4 consumes those anchors before Senior ratification.
+AAPL follows the DCF route with the global config defaults: B-6 selects `DCF`, B-3 files valuation artifacts, B-5 files one base-rate anchor per DCF revenue-growth scenario, and C-4 consumes those anchors before Senior ratification.
+
+CRM follows the DCF route with SaaS sector calibration: B-6 still selects `DCF` and keeps the method `asset_class` independent, but it also emits `calibration_sector="saas"` from `config.dcf.sector_scenarios.saas.tickers`. B-3 uses that sector key to source revenue growth, NOPAT margin, and sales-to-capital assumptions from the Damodaran-backed SaaS scenario block. Tickers without a configured sector continue to use the global `config.dcf.scenarios` fallback.
 
 MRNA follows the non-DCF `rNPV` route: B-6 selects `rNPV`, B-3 and B-5 are not fabricated, and C-4 uses route-specific optionality scenario values with `valuation_deferred` context.
 

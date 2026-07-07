@@ -88,6 +88,12 @@ Routing table, escalation matrix, parallelism, KILL halt, revisit triggers, C-5 
 **Spec:** `specs/2026-07-03-m4c-control-flow/`
 **Status:** M4c complete (identity-backed Senior metadata, Azure Foundry Senior selector, route manifest audit, canonical KillMemo halts, final Handoff signing metadata, canonical `revisit_triggers`, and resolver route/escalation documentation). Validated with `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest`, `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync python -m resolver AAPL`, and `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync python -m resolver MRNA`. Live Azure Foundry validation is pending credentials.
 
+### M4.5 — Sector-aware DCF base rates
+Add domain calibration before full live performance calibration: DCF assumptions can be selected by explicit `calibration_sector` while the existing global `dcf.scenarios` block remains the fallback.
+**Done:** SaaS tickers can use Damodaran-backed Software (System & Application) base rates for revenue growth, NOPAT margin, and sales-to-capital without overloading method `asset_class`.
+**Spec:** `specs/2026-07-06-m4-5-sector-aware-dcf/`
+**Status:** M4.5 Phase 1 complete (SaaS `sector_scenarios` config, CRM manual sector fixture, B-6 `calibration_sector` routing, B-3 sector/global assumption-source resolution, Damodaran provenance text, and global fallback preservation). Validated with `UV_CACHE_DIR=.uv-cache .venv/bin/uv run --no-sync pytest` and resolver smokes for AAPL, MRNA, UBER, and CRM.
+
 ### M5 — Calibration + performance reviews
 `D-4 Calibration` analytics (hit-rate by conviction band, directional bias, leak-by-phase) + the routing-correctness and escalation-correctness checks.
 **Done:** the org measures its own outcome quality and health over time.
@@ -105,4 +111,4 @@ Worked-example exemplar on a real ticker (highest-ROI learning aid); containeriz
 
 ---
 
-**Critical path through the build:** M0 → M1 → **M2a** → M2b → M3.1 → M3.2 → M3.3 → M3.4 → M3.5 → M3.6 → M3.7 → M4a → M4b → M4c. M5/M6/M7 thicken a proven system. If time is short, a credible end-to-end demo exists at the end of M4c; everything after improves trust and reach, not core function.
+**Critical path through the build:** M0 → M1 → **M2a** → M2b → M3.1 → M3.2 → M3.3 → M3.4 → M3.5 → M3.6 → M3.7 → M4a → M4b → M4c → M4.5. M5/M6/M7 thicken a proven system. If time is short, a credible end-to-end demo exists at the end of M4c; M4.5 improves valuation base-rate quality before broader calibration work.
