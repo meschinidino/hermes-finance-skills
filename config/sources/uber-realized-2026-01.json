@@ -1,0 +1,20 @@
+{
+  "source_name": "UBER EDGAR realized financials (10-K companyfacts)",
+  "source_date": "2026-01",
+  "source_urls": {
+    "edgar_companyfacts": "https://data.sec.gov/api/xbrl/companyfacts/CIK0001543151.json",
+    "edgar_filings": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=UBER&type=10-K"
+  },
+  "base_value_decimals": 3,
+  "captured_by": "M4.5 Phase 3 realized-anchor provisioning. Raw realized facts from the committed uber_companyfacts.json (FY2025 10-K) as computed by the M2a spine: revenue_growth_next_5y = trailing 3-year revenue CAGR FY2023->FY2025 ((52017/37281)^(1/2)-1 = 0.1812); after_tax_operating_margin = FY2025 spine NOPAT margin (0.0802); sales_to_invested_capital = FY2025 capital turnover incl goodwill (revenue 52017 / invested_capital_incl_gw 31497 = 1.651); sales_to_invested_capital_ex_goodwill = FY2025 ex-goodwill turnover (revenue 52017 / invested_capital_ex_gw 22566 = 2.305). These are the raw sourced facts only; the fade of trailing growth to a forecast-sustainable base and the choice of the ex-goodwill turnover are house judgments recorded in config/sector_brackets.yaml, not here.",
+  "industries": {
+    "UBER realized (FY2025 companyfacts)": {
+      "firm_count": 1,
+      "revenue_growth_next_5y": 0.1812,
+      "after_tax_operating_margin": 0.0802,
+      "sales_to_invested_capital": 1.651,
+      "sales_to_invested_capital_ex_goodwill": 2.305,
+      "note": "Single-company realized anchor (n=1 by construction, not a cross-sectional sample). Growth here is trailing realized, not a forward estimate; the forward base growth is faded in the house layer."
+    }
+  }
+}
