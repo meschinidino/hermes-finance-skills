@@ -11,8 +11,14 @@
 # conventions.yaml, so refreshing the base rates means dropping in a new snapshot
 # and re-running the tool, not hand-editing decimals.
 #
-# base value  = round(Damodaran value from snapshot, snapshot.base_value_decimals)
+# base value  = round(source value from snapshot, snapshot.base_value_decimals)
 # bear / bull = the absolute house-judgment values below
+#
+# A sector may name its own `snapshot:` (falling back to the top-level default),
+# and may declare `base_overrides:` for revenue_growth / sales_to_capital when the
+# base is a house judgment layered on the raw sourced facts (realized anchors).
+# `guardrail_overrides:` names each economic guardrail (firm_count / nopat_margin)
+# a sector knowingly waives, with the written rationale required to waive it.
 
 snapshot: "damodaran-2026-01"
 
@@ -31,3 +37,34 @@ sectors:
       sales_to_capital:
         bear: 1.20
         bull: 2.00
+
+  uber_realized:
+    # Single-company realized anchor. Sourced raw facts live in the uber-realized
+    # snapshot; the two judgments layered on top (fade of trailing growth to a
+    # forecast-sustainable base, and use of the ex-goodwill capital turnover) are
+    # recorded here as base_overrides, and the guardrail waivers are documented below.
+    snapshot: "uber-realized-2026-01"
+    industry_category: "UBER realized (FY2025 companyfacts)"
+    tickers: ["UBER"]
+    rationale: "UBER is calibrated to its own realized EDGAR financials (FY2025 NOPAT margin ~8%, ex-goodwill capital turnover ~2.3, trailing revenue growth faded from ~18%) rather than to an industry median, because internet-platform cross-sectional medians pair a high-growth cohort's growth with a low-margin cohort's margin and are jointly incoherent for a single company; the firm-count guardrail is waived because a company's own filings are n=1 by construction, not a thin sample."
+    base_overrides:
+      # revenue_growth: trailing 3yr realized CAGR (~0.181) faded to a forecast-sustainable
+      # rate; the DCF holds growth constant over the forecast, so raw 18%/yr for five years is
+      # not internally consistent with a maturing platform.
+      revenue_growth: 0.13
+      # sales_to_capital: ex-goodwill capital turnover (~2.305). Marginal growth reinvests
+      # operating capital, not re-acquired goodwill; the incl-goodwill 1.651 reflects past M&A.
+      sales_to_capital: 2.30
+    brackets:
+      revenue_growth:
+        bear: 0.10
+        bull: 0.16
+      nopat_margin:
+        bear: 0.06
+        bull: 0.11
+      sales_to_capital:
+        bear: 2.00
+        bull: 2.50
+    guardrail_overrides:
+      firm_count: "Single-company realized anchor: the firm-count guardrail exists to reject thin cross-sectional industry samples, and does not apply to a company's own realized filings, where n=1 is correct by construction, not sample noise."
+      nopat_margin: "UBER's realized FY2025 NOPAT margin is genuinely ~8% (a structurally thin marketplace margin that has inflected up from 2.2% to 8.0% over three years), so the thin-margin flag reflects real economics, not a data error."

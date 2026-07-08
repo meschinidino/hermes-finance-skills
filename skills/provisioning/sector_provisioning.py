@@ -35,6 +35,18 @@ _SNAPSHOT_DRIVER_KEYS = {
     "nopat_margin": "after_tax_operating_margin",
     "sales_to_capital": "sales_to_invested_capital",
 }
+# For a realized anchor the base growth and reinvestment are house judgments
+# layered on the raw sourced facts; base margin always comes from the snapshot.
+_BASE_OVERRIDABLE = ("revenue_growth", "sales_to_capital")
+
+# Economic guardrails (house policy, judged identically for every sector). These
+# are NOT sourced data and NOT per-sector judgment, so they live here as module
+# constants rather than in the snapshot or the house bracket layer.
+MIN_FIRMS = 50            # firm-count reliability floor for a cross-sectional sample
+THIN_MARGIN = 0.10        # base NOPAT margin below this is flagged (override-able)
+UPPER_MARGIN = 0.60       # base NOPAT margin above this (or <= 0) is a data error (hard)
+# Guardrails a sector may knowingly waive with a written rationale.
+_OVERRIDABLE_GUARDRAILS = ("firm_count", "nopat_margin")
 
 
 class ProvisioningError(ValueError):
@@ -103,9 +115,25 @@ def build_sector_block(sector: str, house: dict[str, Any], snapshot: dict[str, A
     base: dict[str, float] = {}
     for driver in _DRIVERS:
         snapshot_key = _SNAPSHOT_DRIVER_KEYS[driver]
+        # The snapshot must carry the raw sourced fact for every driver even when
+        # the base is house-overridden, so it stays a faithful, refreshable record.
         if row.get(snapshot_key) is None:
             raise ProvisioningError(f"snapshot_missing_driver:{industry}:{snapshot_key}")
         base[driver] = _round_base(row[snapshot_key], decimals)
+
+    # Realized anchors layer a house judgment (faded growth, ex-goodwill turnover)
+    # on top of the raw sourced facts. Only revenue_growth and sales_to_capital may
+    # be overridden; base nopat_margin always comes from the snapshot.
+    base_overrides = house.get("base_overrides") or {}
+    if not isinstance(base_overrides, dict):
+        raise ProvisioningError(f"sector_base_overrides_not_a_mapping:{sector}")
+    for driver, value in base_overrides.items():
+        if driver not in _BASE_OVERRIDABLE:
+            raise ProvisioningError(f"base_override_not_allowed:{sector}:{driver}")
+        try:
+            base[driver] = float(value)
+        except (TypeError, ValueError):
+            raise ProvisioningError(f"base_override_not_numeric:{sector}:{driver}:{value!r}") from None
 
     brackets = house.get("brackets")
     if not isinstance(brackets, dict):
@@ -147,17 +175,126 @@ def build_sector_block(sector: str, house: dict[str, Any], snapshot: dict[str, A
     return block
 
 
+def evaluate_guardrails(sector: str, block: dict[str, Any], overrides: Any = None) -> dict[str, Any]:
+    """Apply the economic guardrails to an assembled block.
+
+    Two guardrail families:
+
+    - Coherence (NOT override-able): every scenario must have a positive free-cash-
+      flow proxy (nopat_margin > revenue_growth / sales_to_capital) and the proxy
+      must be ordered bear < base < bull. This is the algebraic proxy only -- no DCF,
+      no EDGAR -- so provisioning stays pure and offline. It catches the incoherent
+      industry-median class (0.046 < 0.177/1.35) at `check`/`emit`, before a bad
+      block can reach conventions.yaml and halt analyze() on the C-4 ordering audit.
+      The full positive-value + monotonicity check on the real DCF output lives in
+      the UBER validation test, which already runs analyze().
+    - Override-able economic guardrails: firm_count >= MIN_FIRMS and base
+      nopat_margin >= THIN_MARGIN. A violation fails closed unless the house layer
+      declares a matching `guardrail_overrides` entry with a non-empty rationale. A
+      base margin of <= 0 or > UPPER_MARGIN is a data error with no override.
+
+    Returns a surfacing record ({sector, applied_overrides, coherence}). Raises
+    ProvisioningError on any un-overridden violation, unused override, or incoherence.
+    """
+
+    overrides = overrides or {}
+    if not isinstance(overrides, dict):
+        raise ProvisioningError(f"guardrail_overrides_not_a_mapping:{sector}")
+
+    scenarios = block["scenarios"]
+    base_margin = float(scenarios["base"]["nopat_margin"])
+
+    # Hard margin plausibility (never override-able): catch data errors.
+    if base_margin <= 0 or base_margin > UPPER_MARGIN:
+        raise ProvisioningError(f"guardrail_margin_implausible:{sector}:{base_margin}")
+
+    # Coherence proxy (never override-able).
+    if "coherence" in overrides:
+        raise ProvisioningError(f"guardrail_override_not_allowed:{sector}:coherence")
+    proxies: dict[str, float] = {}
+    for name in ("bear", "base", "bull"):
+        scenario = scenarios[name]
+        s2c = float(scenario["sales_to_capital"])
+        if s2c <= 0:
+            raise ProvisioningError(f"guardrail_nonpositive_sales_to_capital:{sector}:{name}")
+        proxy = float(scenario["nopat_margin"]) - float(scenario["revenue_growth"]) / s2c
+        if proxy <= 0:
+            raise ProvisioningError(f"guardrail_incoherent_negative_fcff:{sector}:{name}")
+        proxies[name] = proxy
+    if not (proxies["bear"] < proxies["base"] < proxies["bull"]):
+        raise ProvisioningError(f"guardrail_incoherent_non_monotonic:{sector}")
+
+    # Override-able economic guardrails.
+    violations: list[str] = []
+    if int(block["firm_count"]) < MIN_FIRMS:
+        violations.append("firm_count")
+    if base_margin < THIN_MARGIN:
+        violations.append("nopat_margin")
+
+    applied: list[dict[str, str]] = []
+    for guardrail in violations:
+        rationale = overrides.get(guardrail)
+        if not (isinstance(rationale, str) and rationale.strip()):
+            raise ProvisioningError(f"guardrail_violation_requires_override:{sector}:{guardrail}")
+        applied.append({"guardrail": guardrail, "rationale": rationale})
+
+    # An override declared for a guardrail that is not actually violated keeps the
+    # override set honest to the data.
+    for name in overrides:
+        if name not in violations:
+            raise ProvisioningError(f"guardrail_unused_override:{sector}:{name}")
+
+    return {"sector": sector, "applied_overrides": applied, "coherence": "ok"}
+
+
+def _build_all(
+    brackets_path: Path | str,
+    sources_dir: Path | str,
+) -> list[tuple[str, dict[str, Any], dict[str, Any]]]:
+    """Assemble every sector block and run its guardrails once.
+
+    Returns (sector, block, guardrail_result) per sector. Fails closed on any
+    un-overridden guardrail violation or incoherence before a block can be treated
+    as valid or emitted. Shared by generate_sector_blocks and guardrail_summary so
+    the per-sector snapshot loading and build happen in exactly one place.
+    """
+
+    brackets = load_brackets(brackets_path)
+    default_snapshot = brackets["snapshot"]
+    cache: dict[str, dict[str, Any]] = {}
+
+    def _snapshot_for(house: dict[str, Any]) -> dict[str, Any]:
+        # A sector may name its own snapshot (a realized anchor is sourced from
+        # EDGAR, not the Damodaran industry file); otherwise use the default.
+        name = house.get("snapshot", default_snapshot)
+        if name not in cache:
+            cache[name] = load_snapshot(Path(sources_dir) / f"{name}.json")
+        return cache[name]
+
+    built: list[tuple[str, dict[str, Any], dict[str, Any]]] = []
+    for sector, house in brackets["sectors"].items():
+        block = build_sector_block(sector, house, _snapshot_for(house))
+        result = evaluate_guardrails(sector, block, house.get("guardrail_overrides"))
+        built.append((sector, block, result))
+    return built
+
+
 def generate_sector_blocks(
     *,
     brackets_path: Path | str = DEFAULT_BRACKETS,
     sources_dir: Path | str = DEFAULT_SOURCES_DIR,
 ) -> dict[str, dict[str, Any]]:
-    brackets = load_brackets(brackets_path)
-    snapshot = load_snapshot(Path(sources_dir) / f"{brackets['snapshot']}.json")
-    return {
-        sector: build_sector_block(sector, house, snapshot)
-        for sector, house in brackets["sectors"].items()
-    }
+    return {sector: block for sector, block, _ in _build_all(brackets_path, sources_dir)}
+
+
+def guardrail_summary(
+    *,
+    brackets_path: Path | str = DEFAULT_BRACKETS,
+    sources_dir: Path | str = DEFAULT_SOURCES_DIR,
+) -> list[dict[str, Any]]:
+    """Per-sector guardrail surfacing for `check`: applied overrides + coherence."""
+
+    return [result for _, _, result in _build_all(brackets_path, sources_dir)]
 
 
 def _committed_sector_scenarios(conventions_path: Path | str) -> dict[str, Any]:
@@ -222,7 +359,12 @@ def main(argv: list[str] | None = None) -> int:
                 brackets_path=args.brackets,
                 sources_dir=args.sources_dir,
             )
-            print(json.dumps({"status": "ok" if not issues else "drift", "issues": issues}, indent=2, sort_keys=True))
+            guardrails = guardrail_summary(brackets_path=args.brackets, sources_dir=args.sources_dir)
+            print(json.dumps(
+                {"status": "ok" if not issues else "drift", "issues": issues, "guardrails": guardrails},
+                indent=2,
+                sort_keys=True,
+            ))
             return 0 if not issues else 1
         block = emit_sector_block(args.sector, brackets_path=args.brackets, sources_dir=args.sources_dir)
         sys.stdout.write(block)

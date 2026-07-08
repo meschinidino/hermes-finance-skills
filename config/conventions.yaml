@@ -77,3 +77,27 @@ dcf:
           revenue_growth: 0.20
           nopat_margin: 0.38
           sales_to_capital: 2.00
+    uber_realized:
+      status: "active"
+      source_name: "UBER EDGAR realized financials (10-K companyfacts)"
+      source_date: "2026-01"
+      industry_category: "UBER realized (FY2025 companyfacts)"
+      firm_count: 1
+      source_urls:
+        edgar_companyfacts: "https://data.sec.gov/api/xbrl/companyfacts/CIK0001543151.json"
+        edgar_filings: "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=UBER&type=10-K"
+      tickers: ["UBER"]
+      rationale: "UBER is calibrated to its own realized EDGAR financials (FY2025 NOPAT margin ~8%, ex-goodwill capital turnover ~2.3, trailing revenue growth faded from ~18%) rather than to an industry median, because internet-platform cross-sectional medians pair a high-growth cohort's growth with a low-margin cohort's margin and are jointly incoherent for a single company; the firm-count guardrail is waived because a company's own filings are n=1 by construction, not a thin sample."
+      scenarios:
+        bear:
+          revenue_growth: 0.10
+          nopat_margin: 0.06
+          sales_to_capital: 2.00
+        base:
+          revenue_growth: 0.13
+          nopat_margin: 0.08
+          sales_to_capital: 2.30
+        bull:
+          revenue_growth: 0.16
+          nopat_margin: 0.11
+          sales_to_capital: 2.50
