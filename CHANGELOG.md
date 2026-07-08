@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.1.2.0] - 2026-07-08
+
+### Added
+
+- Added the `uber_realized` DCF calibration: UBER is anchored to its own realized EDGAR financials (FY2025 NOPAT margin ~8%, ex-goodwill capital turnover ~2.3, trailing revenue growth faded from ~18%) instead of an industry median, fixing the `price_at_or_below_bear` report flag. Sourced raw facts live in `config/sources/uber-realized-2026-01.json`; the growth fade and ex-goodwill choice are documented house judgments in `config/sector_brackets.yaml`.
+- Added an algebraic coherence guardrail to `skills/provisioning` (`nopat_margin > revenue_growth / sales_to_capital` per scenario, ordered bear<base<bull; not override-able) that rejects an incoherent anchor at `provision-sectors check`, before it can halt `analyze()` on the C-4 ordering audit.
+- Added a documented guardrail-override system (firm-count and thin-margin) so a single-company realized anchor (n=1 by construction) and a genuinely thin margin activate with written rationale, surfaced in `provision-sectors check`.
+- Added the M4.5 Phase 3 spec (plan, requirements, validation, advisor finding) recording why the industry-median path was abandoned.
+
+### Notes
+
+- No `analyze()` runtime change: UBER still reads `conventions.yaml`. UBER now renders a positive, monotonic range (bear 5.55 / base 16.42 / bull 38.81 vs price 74.43); `price_at_or_below_bear` is cleared and replaced by the legitimate `price_at_or_above_bull`. AAPL/MRNA/CRM unchanged; the SaaS block regenerates byte-for-byte.
+- The first Phase 3 attempt (anchoring UBER to the Damodaran `Software (Internet)` industry median) was abandoned: the median's growth and margin are independent cross-sectional statistics, jointly incoherent for a single-company DCF (negative, non-monotonic values).
+- The flat 24% global bear-margin default (the broader root cause for thin-margin names) is deferred as a `TODOS.md` Valuation item.
+
 ## [0.1.1.0] - 2026-07-07
 
 ### Added
